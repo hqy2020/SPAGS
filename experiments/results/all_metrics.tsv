@@ -1,0 +1,16 @@
+method	organ	views	psnr_2d	ssim_2d	status
+R2GS	chest	3			pending
+R2GS	chest	6			pending
+R2GS	chest	9			pending
+R2GS	foot	3			pending
+R2GS	foot	6			pending
+R2GS	foot	9			pending
+R2GS	head	3	26.8682	0.9267	done
+R2GS	head	6	32.8690	0.9725	done
+R2GS	head	9	35.4826	0.9809	done
+R2GS	abdomen	3	29.8824	0.9378	done
+R2GS	abdomen	6	34.4325	0.9743	done
+R2GS	abdomen	9	36.7131	0.9808	done
+R2GS	pancreas	3			pending
+R2GS	pancreas	6	33.7877	0.9532	done
+R2GS	pancreas	9	35.5306	0.9626	done

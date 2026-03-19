@@ -267,7 +267,7 @@ def readNAFInfo(path, eval):
             )  # R is stored transposed due to 'glm' in CUDA code
             T = w2c[:3, 3]
 
-            image = projs[i_split] * scene_scale
+            image = np.float32(projs[i_split]) * scene_scale
 
             # Note, dDetector is [v, u] not [u, v]
             FovX = np.arctan2(scanner_cfg["sDetector"][1] / 2, scanner_cfg["DSD"]) * 2
