@@ -199,11 +199,10 @@ class GaussianModel:
                     schedule_s=self.adm_schedule_s,
                     view_scale=self.adm_view_scale
                 )
-                # 前向：ADM调制密度；反向：梯度绕开CUDA核（CUDA backward不支持非叶子节点opacity）
-                return base_density * modulation.squeeze(-1).detach()
+                return (base_density * modulation.squeeze(-1)).detach()
             except Exception:
-                return base_density
-        return base_density
+                return base_density.detach()
+        return base_density.detach()
     
     @property
     def get_nu(self):
