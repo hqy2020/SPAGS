@@ -30,5 +30,11 @@ YYYY-MM-DD HH:MM | exp-<name> | PSNR=XX.XXXX/SSIM=XX.XXXX | 参数: ... | 状态
   - 每次实验自动记录到 results.tsv 和 decision_log.md
   - 每次实验后 git commit + push 到 GitHub
 - **报告位置**: `cc-agent/autoresearch/reports/`
-- **当前问题**: ADM PSNR(26.45) < baseline(27.48)
-- **下一步**: 修复 ADM 梯度流
+### 2026-04-28 06:00 | 实验 #1: adm_gradfix_001
+- **假设**: 移除 get_density 的 .detach() 让 ADM 梯度通过 rasterizer 反向传播
+- **修改**: r2_gaussian/gaussian/gaussian_model.py → get_density() 去掉所有 .detach()
+- **结果**: PSNR=28.2981, SSIM=0.8172 (baseline: 27.4827, 0.8211)
+- **变化**: **+0.8154 dB PSNR! 首次超越 baseline**
+- **状态**: ✅ keep
+- **分析**: ADM 梯度修复完全正确。三平面特征网络现在能从渲染损失学习，TV loss 作为辅助正则化。iter 1000 时 PSNR=27.5380 已超 baseline。
+- **commit**: 8e3f62f
