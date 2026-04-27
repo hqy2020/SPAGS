@@ -1189,8 +1189,9 @@ def training_report(
                         config["name"] + "/ssim_2d", ssim_2d, iteration
                     )
 
-        # 3D重建性能评估
-        vol_pred = queryFunc(scene.gaussians)["vol"]
+        # 3D重建性能评估（禁用梯度以兼容ADM计算图）
+        with torch.no_grad():
+            vol_pred = queryFunc(scene.gaussians)["vol"]
         vol_gt = scene.vol_gt
         psnr_3d, _ = metric_vol(vol_gt, vol_pred, "psnr")
         ssim_3d, ssim_3d_axis = metric_vol(vol_gt, vol_pred, "ssim")
