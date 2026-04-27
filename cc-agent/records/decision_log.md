@@ -37,4 +37,12 @@ YYYY-MM-DD HH:MM | exp-<name> | PSNR=XX.XXXX/SSIM=XX.XXXX | 参数: ... | 状态
 - **变化**: **+0.8154 dB PSNR! 首次超越 baseline**
 - **状态**: ✅ keep
 - **分析**: ADM 梯度修复完全正确。三平面特征网络现在能从渲染损失学习，TV loss 作为辅助正则化。iter 1000 时 PSNR=27.5380 已超 baseline。
-- **commit**: 8e3f62f
+### 2026-04-28 06:00 | 实验 #5: adm_feat128_001
+- **假设**: 更多特征维度 (feat_dim=128) 能继续提升 PSNR
+- **参数**: feat_dim=128, r_max=1.0, tv_weight=0.002, grid_size=256
+- **结果**: PSNR=29.0035, SSIM=0.8181 (baseline: 27.4827, 0.8211)
+- **变化**: **+1.5208 dB PSNR! 突破29.00!** 但SSIM略降(-0.0030)
+- **分析**: feat_dim 64→128 仅带来 +0.10 dB 改善（vs 32→64 的 +0.30 dB），收益递减。训练速度从~3 it/s降至~1.14 it/s（3x减慢），性价比不高。
+- **决策**: ✅ keep（PSNR新纪录），但ADM参数扫描接近最优限制
+- **下一步**: 转向第2优先级 GAR (FSGS Proximity) 集成
+- **commit**: 7b85bf8
