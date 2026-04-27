@@ -45,4 +45,27 @@ YYYY-MM-DD HH:MM | exp-<name> | PSNR=XX.XXXX/SSIM=XX.XXXX | 参数: ... | 状态
 - **分析**: feat_dim 64→128 仅带来 +0.10 dB 改善（vs 32→64 的 +0.30 dB），收益递减。训练速度从~3 it/s降至~1.14 it/s（3x减慢），性价比不高。
 - **决策**: ✅ keep（PSNR新纪录），但ADM参数扫描接近最优限制
 - **下一步**: 转向第2优先级 GAR (FSGS Proximity) 集成
-- **commit**: 7b85bf8
+|- **commit**: 7b85bf8
+### 2026-04-28 07:00 | 实验 #6: adm_feat256_001
+- **假设**: feat_dim=256 提供更多特征容量以继续提升 PSNR
+- **参数**: feat_dim=256, r_max=1.0, tv_weight=0.002, grid_size=256
+- **结果**: PSNR=29.0986, SSIM=0.8178 (baseline: 27.4827, 0.8211)
+- **变化**: **+1.616 dB PSNR** 但收益递减明显
+- **分析**: 128→256 仅 +0.095 dB (vs 64→128 的 +0.10 dB, 32→64 的 +0.30 dB)。训练速度 ~1.3 it/s (feat64的1/3)。SSIM持续下降至0.8178。**feat_dim=64为最优性价比**
+- **决策**: ✅ keep (新PSNR纪录但边际收益极低)
+- **下一步**: ADM参数扫描完成。转移到新方向
+### 2026-04-28 07:00 | 实验 #7: head_baseline
+- **假设**: 测试头数据集上的baseline性能
+- **参数**: 无ADM, foot_50_3views → head_50_3views
+- **结果**: PSNR=31.1727, SSIM=0.9177
+- **变化**: 比foot baseline 27.48高出+3.69 dB —— 头部数据集更容易
+- **分析**: 头部CT结构更规则（对称骨骼），3视角覆盖更完整
+- **决策**: ✅ keep
+### 2026-04-28 07:00 | 实验 #8: head_adm64_001
+- **假设**: ADM (feat_dim=64, r_max=1.0) 在head数据集上同样有效
+- **参数**: feat_dim=64, r_max=1.0, tv_weight=0.002, grid_size=256, head_50_3views
+- **结果**: PSNR=31.3164, SSIM=0.9164 (head baseline: 31.1727, 0.9177)
+- **变化**: **+0.14 dB** over head baseline
+- **分析**: 在head上的改善(+0.14dB)远小于foot(+1.42dB)。原因：1) head baseline PSNR已很高(31.17)，天花板效应；2) 头部结构更简单，ADM空间调制的边际收益降低
+- **决策**: ✅ keep (确认ADM在不同数据集上有效但增益依赖于数据难度)
+- **关键发现**: ADM对困难数据(低baseline)效果显著，对简单数据增益有限
