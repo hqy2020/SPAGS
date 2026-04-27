@@ -191,7 +191,18 @@ class GaussianModel:
 
     @property
     def get_density(self):
-        return self.density_activation(self._density)
+        base_density = self.density_activation(self._density)
+        if self.adm_module is not None and self._xyz.shape[0] > 0:
+            try:
+                modulation, _, _ = self.adm_module.get_modulation(
+                    self._xyz,
+                    schedule_s=self.adm_schedule_s,
+                    view_scale=self.adm_view_scale
+                )
+                return base_density * modulation.squeeze(-1)
+            except Exception:
+                return base_density
+        return base_density
     
     @property
     def get_nu(self):
