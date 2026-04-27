@@ -199,12 +199,14 @@ class GaussianModel:
                     schedule_s=self.adm_schedule_s,
                     view_scale=self.adm_view_scale
                 )
-                # ADM 前向调制，完全无梯度通过rasterizer
-                # ADM 的训练信号来自 feature plane TV loss
-                return (base_density * modulation).detach()
+                # ADM 调制：让梯度通过 rasterizer 反向传播
+                # base_density 梯度 → _density 参数学习
+                # modulation 梯度 → ADM tri-plane + MLP 学习
+                # 注意：modulation 输出 shape [N,1]，与 density [N,1] 乘法不会广播
+                return base_density * modulation
             except Exception:
-                return base_density.detach()
-        return base_density.detach()
+                return base_density
+        return base_density
 
     # 获取带梯度的调制密度（用于单独的ADM训练路径）
     def get_adm_density(self):
