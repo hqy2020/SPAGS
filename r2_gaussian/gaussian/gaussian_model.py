@@ -201,7 +201,7 @@ class GaussianModel:
                 )
                 # ADM 前向调制，完全无梯度通过rasterizer
                 # ADM 的训练信号来自 feature plane TV loss
-                return (base_density * modulation.squeeze(-1)).detach()
+                return (base_density * modulation).detach()
             except Exception:
                 return base_density.detach()
         return base_density.detach()
@@ -216,7 +216,7 @@ class GaussianModel:
                     schedule_s=self.adm_schedule_s,
                     view_scale=self.adm_view_scale
                 )
-                return base_density.detach() * modulation.squeeze(-1)
+                return base_density.detach() * modulation
             except Exception:
                 return base_density.detach()
         return base_density.detach()
