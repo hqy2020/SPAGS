@@ -199,11 +199,27 @@ class GaussianModel:
                     schedule_s=self.adm_schedule_s,
                     view_scale=self.adm_view_scale
                 )
-                return base_density * modulation.squeeze(-1).detach()
+                # ADM 前向调制，完全无梯度通过rasterizer
+                # ADM 的训练信号来自 feature plane TV loss
+                return (base_density * modulation.squeeze(-1)).detach()
             except Exception:
-                return base_density
-        return base_density
-    
+                return base_density.detach()
+        return base_density.detach()
+
+    # 获取带梯度的调制密度（用于单独的ADM训练路径）
+    def get_adm_density(self):
+        base_density = self.density_activation(self._density)
+        if self.adm_module is not None and self._xyz.shape[0] > 0:
+            try:
+                modulation, _, _ = self.adm_module.get_modulation(
+                    self._xyz,
+                    schedule_s=self.adm_schedule_s,
+                    view_scale=self.adm_view_scale
+                )
+                return base_density.detach() * modulation.squeeze(-1)
+            except Exception:
+                return base_density.detach()
+        return base_density.detach()
     @property
     def get_nu(self):
         """SSS: Get degrees of freedom for Student's t distribution"""
