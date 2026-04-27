@@ -84,6 +84,13 @@ class ModelParams(ParamGroup):
         self.fsgs_noise_std = 0.05  # 伪视角位置噪声标准差（用于相机位置，论文Eq.5）
         self.fsgs_start_iter = 2000  # FSGS功能启动迭代数
 
+        # 🌟🌟🌟 ADM: Adaptive Density Modulation 参数
+        self.enable_adm = False  # 是否启用ADM模块
+        self.adm_grid_size = 256  # 三平面特征网格分辨率
+        self.adm_feat_dim = 32  # 每个平面的特征通道数（论文推荐32）
+        self.adm_r_max = 0.5  # 最大调制范围（论文推荐0.5）
+        self.adm_tv_weight = 0.002  # TV正则化权重（消融实验最优值）
+
         super().__init__(parser, "Loading Parameters", sentinel)
 
     def extract(self, args):

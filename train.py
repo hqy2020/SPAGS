@@ -35,6 +35,18 @@ from r2_gaussian.utils.image_utils import metric_vol, metric_proj  # 评估指�
 from r2_gaussian.utils.plot_utils import show_two_slice  # 可视化工具
 from r2_gaussian.utils.sghmc_optimizer import create_sss_optimizer, HybridOptimizer  # SSS优化器
 
+# ADM: Adaptive Density Modulation module
+try:
+    from r2_gaussian.utils.adm_module import (
+        ADMModule, create_adm_module, compute_adm_schedule,
+        compute_view_scale
+    )
+    HAS_ADM = True
+    print("✅ ADM module available")
+except ImportError as e:
+    HAS_ADM = False
+    print(f"📦 ADM module not available: {e}")
+
 # FSGS伪标签改进模块 (可选，向下兼容)
 try:
     from r2_gaussian.utils.pseudo_view_utils import FSGSPseudoViewGenerator, create_fsgs_pseudo_cameras
@@ -175,6 +187,43 @@ def training(
     
     # 创建高斯场字典 - 参考X-Gaussian-depth实现
     GsDict = {}
+    
+    # ADM: Initialize Adaptive Density Modulation module
+    enable_adm = getattr(dataset, 'enable_adm', False) and HAS_ADM
+    adm_module = None
+    adm_optimizer = None
+    
+    if enable_adm:
+        print("\n" + "="*60)
+        print("🌟 Initializing ADM: Adaptive Density Modulation")
+        print("="*60)
+        try:
+            adm_module = create_adm_module(
+                grid_size=dataset.adm_grid_size,
+                feat_dim=dataset.adm_feat_dim,
+                r_max=dataset.adm_r_max,
+                bbox=bbox,
+                device='cuda'
+            )
+            # Create ADM optimizer (separate from Gaussian optimizer)
+            # Tri-plane features and MLP decoder parameters
+            adm_optimizer = torch.optim.Adam(
+                adm_module.parameters(),
+                lr=1.6e-4,  # Same as position learning rate
+                betas=(0.9, 0.999),
+                eps=1e-15
+            )
+            # Set ADM module on the primary Gaussian model (will be set on all models later)
+            print(f"✅ ADM module initialized: grid={dataset.adm_grid_size}^2, "
+                  f"feat_dim={dataset.adm_feat_dim}, r_max={dataset.adm_r_max}")
+            print(f"   TV weight: {dataset.adm_tv_weight}")
+            print("="*60 + "\n")
+        except Exception as e:
+            print(f"⚠️  ADM initialization failed: {e}")
+            adm_module = None
+            adm_optimizer = None
+            enable_adm = False
+    
     for i in range(gaussiansN):
         if i == 0:
             GsDict[f"gs{i}"] = gaussians
@@ -186,6 +235,9 @@ def training(
                 print(f"🎓 [SSS-R²] Create gaussians{i} with Student's t distribution")
             else:
                 print(f"📦 [R²] Create gaussians{i}")
+        # Attach ADM module to each Gaussian model
+        if adm_module is not None:
+            GsDict[f"gs{i}"].adm_module = adm_module
     print(f"GsDict.keys() is {GsDict.keys()}")
     
     # 🌟🌟 FSGS 完整系统初始化 (Proximity + Depth + Pseudo Views - 2025-11-15)
@@ -306,6 +358,14 @@ def training(
         # 更新学习率 - 为每个高斯场更新
         for i in range(gaussiansN):
             GsDict[f"gs{i}"].update_learning_rate(iteration)
+        
+        # ADM: Update modulation schedule
+        if adm_module is not None:
+            adm_schedule_s = compute_adm_schedule(iteration, opt.iterations)
+            adm_view_scale = compute_view_scale(len(scene.getTrainCameras()))
+            for i in range(gaussiansN):
+                GsDict[f"gs{i}"].adm_schedule_s = adm_schedule_s
+                GsDict[f"gs{i}"].adm_view_scale = adm_view_scale
 
         # 随机选择一个训练视角
         if not viewpoint_stack:
@@ -665,6 +725,16 @@ def training(
                 loss_tv = tv_3d_loss(vol_pred, reduction="mean")
                 LossDict[f"loss_gs{i}"] += opt.lambda_tv * loss_tv
         
+        # ADM: TV regularization on feature planes
+        if enable_adm and adm_module is not None:
+            adm_tv = adm_module.compute_tv_loss()
+            adm_tv_loss = dataset.adm_tv_weight * adm_tv
+            for i in range(gaussiansN):
+                LossDict[f"loss_gs{i}"] += adm_tv_loss
+            if iteration % 500 == 0:
+                print(f"[ADM-TV] Iteration {iteration}: tv_loss={adm_tv.item():.6f}, "
+                      f"weighted={adm_tv_loss.item():.6f}")
+        
         # SSS: Add ENHANCED regularization losses for Student's t parameters
         for i in range(gaussiansN):
             if hasattr(GsDict[f"gs{i}"], 'use_student_t') and GsDict[f"gs{i}"].use_student_t:
@@ -908,6 +978,11 @@ def training(
                     
                     GsDict[f"gs{i}"].optimizer.step()
                     GsDict[f"gs{i}"].optimizer.zero_grad(set_to_none=True)
+            
+            # ADM: Optimizer step (after Gaussian optimizer)
+            if adm_optimizer is not None:
+                adm_optimizer.step()
+                adm_optimizer.zero_grad()
 
             # 保存高斯模型
             if iteration in saving_iterations or iteration == opt.iterations:
@@ -953,6 +1028,23 @@ def training(
                 metrics[f"loss_gs{i}"] = LossDict[f"loss_gs{i}"].item()
                 for param_group in GsDict[f"gs{i}"].optimizer.param_groups:
                     metrics[f"lr_gs{i}_{param_group['name']}"] = param_group["lr"]
+            
+            # ADM: Log metrics
+            if enable_adm and adm_module is not None:
+                metrics["adm_schedule_s"] = GsDict["gs0"].adm_schedule_s
+                metrics["adm_view_scale"] = GsDict["gs0"].adm_view_scale
+                # Sample ADM modulation stats from current gaussians
+                if GsDict["gs0"]._xyz.shape[0] > 0:
+                    with torch.no_grad():
+                        _, offset, conf = adm_module.get_modulation(
+                            GsDict["gs0"]._xyz[:1000],  # sample 1000 points
+                            schedule_s=GsDict["gs0"].adm_schedule_s,
+                            view_scale=GsDict["gs0"].adm_view_scale
+                        )
+                        metrics["adm_offset_mean"] = offset.mean().item()
+                        metrics["adm_offset_std"] = offset.std().item()
+                        metrics["adm_conf_mean"] = conf.mean().item()
+                        metrics["adm_conf_std"] = conf.std().item()
             training_report(
                 tb_writer,
                 iteration,

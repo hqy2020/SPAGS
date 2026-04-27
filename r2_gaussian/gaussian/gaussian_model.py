@@ -77,7 +77,7 @@ class GaussianModel:
             self.nu_activation = lambda x: torch.ones_like(x) * float('inf')  # Gaussian limit
             self.opacity_activation = lambda x: torch.sigmoid(x)  # [0,1] range
 
-    def __init__(self, scale_bound=None, use_student_t=False):
+    def __init__(self, scale_bound=None, use_student_t=False, adm_module=None):
         self._xyz = torch.empty(0)  # world coordinate
         self._scaling = torch.empty(0)  # 3d scale
         self._rotation = torch.empty(0)  # rotation expressed in quaternions
@@ -93,10 +93,14 @@ class GaussianModel:
         self.spatial_lr_scale = 0
         self.scale_bound = scale_bound
         self.use_student_t = use_student_t  # SSS: flag to enable Student's t
+        # ADM: Adaptive Density Modulation module
+        self.adm_module = adm_module
+        self.adm_schedule_s = 1.0  # modulation strength schedule
+        self.adm_view_scale = 1.0  # view-adaptive scaling
         self.setup_functions()
 
     def capture(self):
-        return (
+        state = (
             self._xyz,
             self._scaling,
             self._rotation,
@@ -111,8 +115,18 @@ class GaussianModel:
             self.scale_bound,
             self.use_student_t,  # SSS: Student's t flag
         )
+        # ADM: include module state dict if present
+        if self.adm_module is not None:
+            return state + (self.adm_module.state_dict(),)
+        return state
 
     def restore(self, model_args, training_args):
+        # Check if ADM state is included (14 elements = SSS + ADM)
+        has_adm = len(model_args) == 14
+        if has_adm:
+            adm_state_dict = model_args[-1]
+            model_args = model_args[:-1]
+        
         if len(model_args) == 13:  # New SSS format
             (
                 self._xyz,
@@ -148,6 +162,14 @@ class GaussianModel:
             self._nu = torch.zeros_like(self._density)
             self._opacity = inverse_sigmoid(torch.ones_like(self._density) * 0.5)
             print("📦 [R²] Loaded legacy model - SSS features disabled")
+        
+        # Restore ADM state if available
+        if has_adm and self.adm_module is not None:
+            try:
+                self.adm_module.load_state_dict(adm_state_dict)
+                print("✅ [ADM] Loaded ADM module state from checkpoint")
+            except Exception as e:
+                print(f"⚠️ [ADM] Could not load ADM state: {e}")
             
         self.training_setup(training_args)
         self.xyz_gradient_accum = xyz_gradient_accum
@@ -169,7 +191,18 @@ class GaussianModel:
 
     @property
     def get_density(self):
-        return self.density_activation(self._density)
+        base_density = self.density_activation(self._density)
+        if self.adm_module is not None and self._xyz.shape[0] > 0:
+            try:
+                modulation, _, _ = self.adm_module.get_modulation(
+                    self._xyz,
+                    schedule_s=self.adm_schedule_s,
+                    view_scale=self.adm_view_scale
+                )
+                return base_density * modulation.squeeze(-1)
+            except Exception:
+                return base_density
+        return base_density
     
     @property
     def get_nu(self):

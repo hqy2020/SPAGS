@@ -1,0 +1,493 @@
+% !TEX root = ../main.tex
+
+\chapter{基于三维高斯泼溅的空间感知医疗影像重建方法}
+\label{chapter:4}
+
+前一章从场景理解的角度探讨了如何在标注稀疏条件下实现高质量的医疗影像分割。本章则转向场景重建问题，聚焦于另一种数据稀疏情景——视角稀疏。这两个研究方向共同服务于稀疏数据条件下的医疗影像智能分析：分割方法从二维图像中提取语义信息，而重建方法则从有限的二维投影数据恢复三维空间结构。两者互为补充，共同为后续的临床应用系统奠定技术基础。
+
+稀疏视角新视图合成面临着初始化偏差、几何约束缺失和密度估计失准三大核心挑战。本章提出SPAGS（Spatial-aware Progressive Adaptive Gaussian Splatting），一种基于三维高斯泼溅的空间感知医疗影像重建方法。该方法通过三阶段设计，空间先验播种、几何感知细化和自适应密度调制，有效解决极稀疏视角下的初始化偏差、几何约束缺失和密度估计失准问题，显著提升新视图合成质量。
+
+\section{引言}
+
+新视图合成（Novel View Synthesis, NVS）是计算机视觉和计算机图形学的核心任务，旨在从有限的输入视角生成场景的任意新视角图像\cite{hartley2003multiple}。在医疗影像领域，稀疏视角新视图合成具有重要的临床价值——通过少量采集视角合成更多视角，可以显著降低患者的辐射剂量\cite{brenner2007radiation,mccollough2009lowdose}，同时保持诊断所需的影像质量。
+
+近年来，3DGS\cite{3DGS}作为一种新兴的可微分渲染表示方法，在NVS领域展现了卓越的性能。与传统神经隐式函数（如NeRF\cite{nerf,mipnerf,mip360}）相比，3DGS采用显式的高斯基元表示，具有更快的训练速度和更高的推理帧率。然而，标准3DGS方法通常依赖密集的输入视角（通常需要数十到上百个视角），在稀疏视角场景下性能急剧下降\cite{niemeyer2022regnerf,yang2023freenerf}。
+
+当视角数量极端稀疏（如仅有3个视角）时，现有的3DGS方法面临以下三个核心挑战。初始化偏差是稀疏视角3DGS面临的首要问题。现有方法采用随机采样或基于SfM的稀疏点云来生成初始高斯点\cite{colmap1,colmap2}，导致初始点云的空间分布与真实场景结构不匹配。复杂结构区域需要更密集的高斯基元来精确表达细节，但初始采样未予优先考虑，简单区域中的冗余高斯则浪费了计算资源。从信息论的角度看，高斯表示精度与采样密度正相关，因此理想的初始化应使点云密度与场景复杂度成正比\cite{raings}。这种初始化偏差在稀疏视角下会被放大，有限的训练数据难以通过梯度更新完全纠正。
+
+几何约束缺失是稀疏视角3DGS的第二个核心挑战。稀疏视角新视图合成本质上是严重欠定问题\cite{donoho2006cs}。以3视角为例，约束方程数量远少于待优化的高斯基元参数。现有方法仅依赖重投影损失作为监督信号，虽能约束二维投影的准确性，但无法有效约束三维空间中高斯点的分布，导致高斯点偏离真实表面（“floating gaussians”现象），产生几何伪影\cite{li2024dngaussian,paliwal2024coherentgs}。从三维重建角度，需要引入空间几何结构约束来增强高斯基元在三维空间中的合理分布。
+
+密度估计失准是稀疏视角3DGS面临的第三个关键问题。现有方法为每个高斯基元分配独立的密度参数，使用全局统一的激活函数。这种全局化策略无法适应不同区域的特性：边界区域需要精细的密度渐变，内部区域应保持相对均匀，而区域交界处可能存在突变。空间异质性是图像表示的基本特性，位置相关的自适应调制能够更准确地建模局部特性。
+
+基于以上分析，本章提出SPAGS方法。其核心设计理念是\textbf{将空间位置信息显式融入新视图合成的全流程}——从初始化、训练到渲染的每个环节都充分利用三维空间的几何结构与位置关系。该方法包含三个主要创新模块：
+
+\begin{enumerate}
+    \item \textbf{空间先验播种（Spatial Prior Seeding, SPS）}：利用FDK算法从稀疏视角投影数据重建粗糙的三维空间几何结构，将重建得到的空间位置分布作为先验指导点云采样，解决初始化偏差问题。
+    \item \textbf{几何感知细化（Geometry-aware Refinement, GAR）}：摒弃仅依赖视图空间梯度的传统密化策略，转而在三维世界坐标系中计算高斯点之间的空间邻近关系，缓解几何约束缺失问题。
+    \item \textbf{自适应密度调制（Adaptive Density Modulation, ADM）}：采用正交平面特征网络对三维空间进行显式编码，使每个高斯点能够感知其空间邻域的上下文信息，实现位置相关的自适应密度修正。
+\end{enumerate}
+
+
+\section{预备知识}
+
+\subsection{3DGS可微分渲染框架}
+
+SPAGS构建在3DGS可微分渲染框架基础上\cite{3DGS}，并针对X射线成像特性进行适配。在X射线/CT成像领域，场景表示与传统RGB图像存在本质区别：X射线成像基于物质对射线的吸收衰减，不涉及颜色信息，因此高斯基元仅需表示空间位置和密度（衰减系数）属性。该框架使用一组3D高斯基元表示场景：
+\begin{equation}
+\mathcal{G} = \{G_i\}_{i=1}^{N}, \quad G_i = (\boldsymbol{\mu}_i, \boldsymbol{\Sigma}_i, \rho_i)
+\end{equation}
+其中$N$为高斯基元的总数量，$\boldsymbol{\mu}_i$是高斯中心位置，$\boldsymbol{\Sigma}_i$是协方差矩阵，$\rho_i$是密度（X射线衰减系数）。与处理RGB图像的标准3DGS不同，本方法无需球谐函数表示的视角相关颜色，因为X射线成像输出为灰度投影图像。
+
+\subsection{体渲染原理}
+
+3DGS采用基于alpha合成的可微分光栅化渲染\cite{image-order}。在X射线成像中，密度$\rho$与不透明度$\alpha$在物理意义上是统一的——衰减系数越高，X射线穿透时被吸收的比例越大，对应的"不透明度"也越高。对于图像平面上的每个像素$\mathbf{p}$，首先将所有高斯投影到图像平面并按深度排序，然后通过前向alpha合成计算像素值：
+\begin{equation}
+I(\mathbf{p}) = \sum_{i=1}^{N} \rho_i \alpha_i \prod_{j=1}^{i-1}(1-\alpha_j)
+\end{equation}
+其中$\rho_i$是第$i$个高斯的密度，$\alpha_i$是其在该像素位置的有效不透明度（由高斯的基础不透明度参数与其在该像素处的二维投影权重相乘得到）。
+
+\subsection{基础损失函数}
+
+基础损失函数由三个组成部分：
+\begin{equation}
+\mathcal{L}_{\text{base}} = \mathcal{L}_{L1} + \lambda_{dssim} \mathcal{L}_{DSSIM} + \lambda_{tv} \mathcal{L}_{3DTV}
+\end{equation}
+
+\begin{enumerate}
+    \item \textbf{L1渲染损失}（$\mathcal{L}_{L1}$）：衡量渲染图像与真实图像的像素级差异
+    \begin{equation}
+    \mathcal{L}_{L1} = \frac{1}{|P|} \sum_{\mathbf{p} \in P} |I_{\text{render}}(\mathbf{p}) - I_{\text{gt}}(\mathbf{p})|
+    \end{equation}
+    其中$P$表示图像像素集合，$I_{\text{render}}$为渲染图像，$I_{\text{gt}}$为真实图像。
+
+    \item \textbf{DSSIM损失}（$\mathcal{L}_{DSSIM}$）：衡量结构相似性\cite{wang2004image}，捕捉感知层面的图像质量
+    \begin{equation}
+    \mathcal{L}_{DSSIM} = \frac{1 - \text{SSIM}(I_{\text{render}}, I_{\text{gt}})}{2}
+    \end{equation}
+
+    \item \textbf{三维全变分损失}（$\mathcal{L}_{3DTV}$）：借鉴R$^2$-Gaussian\cite{r2gaussian}的设计，约束高斯场的空间平滑性
+    \begin{equation}
+    \mathcal{L}_{3DTV} = \sum_{i,j,k} \sqrt{(\Delta_x \rho)_{i,j,k}^2 + (\Delta_y \rho)_{i,j,k}^2 + (\Delta_z \rho)_{i,j,k}^2}
+    \end{equation}
+    其中$\Delta_x$、$\Delta_y$、$\Delta_z$分别表示沿$x$、$y$、$z$方向的离散差分算子，$(i,j,k)$为三维网格索引。
+\end{enumerate}
+
+TV正则化源自压缩感知理论\cite{candes2006robust,donoho2006cs}，其核心假设是自然场景具有分片光滑特性。该正则化在医疗影像重建领域有着广泛应用\cite{sidky2008image,rudin1992tv}。
+
+
+\section{技术方法}
+
+\subsection{整体框架}
+
+SPAGS的完整流程采用三阶段设计，如图\ref{fig:spags-framework}所示。系统输入为$n$个稀疏视角图像$\{I_1, I_2, \ldots, I_n\}$及其相机参数。
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{figures/chapter4/fig4-1.pdf}
+    \caption{SPAGS整体框架流程图}
+    \label{fig:spags-framework}
+\end{figure}
+
+\textbf{阶段一：初始化（SPS）}。使用FDK算法从稀疏视角投影数据重建粗糙的三维体积，根据体积密度值和图像梯度进行加权采样，生成初始高斯点云。
+
+\textbf{阶段二：训练优化}。在每次迭代中，随机选择一个训练视角，通过ADM模块对高斯密度进行位置相关的调制，执行可微分渲染并计算损失函数，最后通过反向传播更新高斯基元参数和正交平面特征网络参数。训练过程中周期性执行两种密化策略：标准梯度驱动密化和GAR邻近度驱动密化，前者基于视图空间梯度，后者基于世界坐标系中的空间稀疏性评估。
+
+\textbf{阶段三：推理渲染}。训练完成后，对于任意新视角，直接使用优化后的高斯基元进行渲染，无需额外的网络推理开销。
+
+\subsection{空间先验播种}
+
+\subsubsection{FDK重建与点云生成}
+
+本文利用FDK算法\cite{feldkamp1984practical}从稀疏视角投影数据重建三维体积。FDK算法是锥束CT重建的经典方法，通过滤波反投影实现从二维投影到三维体积的重建。对于稀疏视角图像$\{I_1, I_2, \ldots, I_n\}$，FDK算法输出三维体积$V$及对应的密度分布。虽然在极稀疏视角下FDK重建存在条纹伪影，但其提供的粗糙几何结构对于点云初始化仍具有重要指导价值。
+
+在获得FDK重建的三维体积后，需要进一步处理以提取初始点云。具体而言，首先对三维体积$V$应用密度阈值筛选出有效的体素位置，去除背景区域，将筛选后的有效体素集合记为$\mathcal{V}_{\text{valid}}$；随后根据体素密度值和局部梯度对位置进行加权，使高密度区域和结构边界区域获得更高权重；最终从筛选后的体素位置提取三维点云，并去除离群点。
+
+\subsubsection{复杂度加权采样算法}
+
+复杂度加权采样的核心目标是使初始点云的密度分布与场景复杂度成正比。给定目标点云数量$N$，复杂结构区域应采样得更密集，简单区域则采样得更稀疏。场景复杂度通过体积密度梯度和局部结构变化率来估计。
+
+算法首先计算每个有效体素位置的复杂度权重：
+\begin{equation}
+w(v_i) = \|\nabla V(v_i)\| + \lambda_s \cdot V(v_i)
+\end{equation}
+其中$\nabla V$是体积密度梯度，$V(v_i)$是体素$v_i$处的体积密度值，$\lambda_s$是平衡系数。密度梯度大的区域通常对应结构边界，高密度区域对应实际物体内部，两者结合可有效识别复杂结构区域。
+
+在此基础上，归一化得到各位置的采样概率：
+\begin{equation}
+P(v_i) = \frac{w(v_i)}{\sum_{v_j} w(v_j)}
+\end{equation}
+这一步体现了“采样与复杂度成正比”的核心思想，每个有效位置的采样概率直接正比于其复杂度权重。
+
+根据上述概率分布，从有效体素集合中无放回地抽取$N$个点作为初始高斯中心位置：
+\begin{equation}
+\{\mathbf{x}_1, \mathbf{x}_2, \ldots, \mathbf{x}_N\} \sim \text{Multinomial}(\mathcal{V}_{\text{valid}}, P, N)
+\end{equation}
+无放回采样保证了不会重复选择同一位置，确保了采样点的空间多样性。
+
+对于每个采样点$\mathbf{x}_i$，需要初始化对应的高斯基元参数。位置参数直接使用采样点坐标$\boldsymbol{\mu}_i = \mathbf{x}_i$；缩放参数$s_i = \sqrt{\frac{1}{k} \sum_{j \in \mathcal{N}_k(i)} \|\mathbf{x}_i - \mathbf{x}_j\|^2}$由局部采样密度决定，其中$\mathcal{N}_k(i)$表示$\mathbf{x}_i$的$k$个最近邻；旋转参数初始化为单位四元数$\mathbf{q}_i = [1, 0, 0, 0]$，表示初始无旋转；密度参数$\rho_i$根据FDK重建体积在该位置的密度值进行初始化，在训练过程中逐步优化。图~\ref{fig:sps}~展示了空间先验播种的完整流程。
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{figures/chapter4/fig4-2.pdf}
+    \caption{空间先验播种流程示意图}
+    \label{fig:sps}
+\end{figure}
+
+\subsection{几何感知细化}
+
+GAR阶段的核心目标是通过改进的密化策略增强高斯基元在三维世界坐标系中的几何分布。标准的3DGS ADC策略纯粹基于视图空间的位置梯度进行密化决策，这在稀疏视角新视图合成中存在根本性局限，它忽略了高斯点在三维空间中的真实分布状态。为此，本文提出邻近感知密化策略，直接在世界坐标系中计算空间邻近度信息来指导密化过程。
+
+标准的3DGS自适应密化策略纯粹基于视图空间的位置梯度，这种方法在密集视角场景中工作良好，因为充足的视角覆盖使得梯度信号能够有效指导优化。然而，在稀疏视角场景下存在一个关键问题：视图空间是相机特定的二维投影空间，而新视图合成的本质是在三维世界空间中实现全局一致的几何结构。仅依赖视图空间梯度会导致高斯点在未被观测到的三维方向上分布稀疏，产生所谓的“空间盲区”。GAR的核心创新在于将密化决策从视图空间提升到世界空间，直接在三维坐标系中评估几何稀疏性。
+
+为了在三维空间中准确评估几何稀疏性，本文引入邻近度评分，它直接在世界坐标系中衡量每个高斯点周围邻域的空间稀疏程度：
+\begin{equation}
+s_{\text{prox}}(G_i) = \frac{1}{k} \sum_{j \in \mathcal{N}_k(i)} \|\boldsymbol{\mu}_i - \boldsymbol{\mu}_j\|
+\end{equation}
+其中$\mathcal{N}_k(i)$表示第$i$个高斯在三维世界坐标系中的$k$个最近邻，$\|\boldsymbol{\mu}_i - \boldsymbol{\mu}_j\|$是两个高斯中心之间的三维欧氏距离。这个评分体现了局部高斯点在三维空间中的平均间距——如果某个高斯周围的邻居在世界坐标中都很远，说明这片三维区域存在几何稀疏性，需要优先进行密化以增强空间表示的完整性。
+
+GAR采用空间邻近分数驱动的密化策略，其核心思想是：如果一个高斯点在三维空间中距离其邻居较远，说明该空间区域存在几何稀疏性，需要增加更多高斯基元来提升三维表示的完整性。密化触发条件为：
+\begin{equation}
+\text{densify}(G_i) = \begin{cases} \text{True}, & s_{\text{prox}}(G_i) > \tau_{\text{prox}} \\ \text{False}, & \text{otherwise} \end{cases}
+\end{equation}
+与标准3DGS的视图空间梯度驱动密化不同，GAR直接在世界坐标系中评估空间几何结构，不依赖可能有偏的二维梯度信号。在稀疏视角条件下，由于训练视角有限（仅3-9个），视图空间梯度往往无法反映三维空间的真实稀疏分布，而基于世界坐标的邻近分数则能够稳定且准确地识别需要密化的空间区域。
+
+固定阈值难以适应不同数据分布，因此本文采用百分位数方法，根据当前所有高斯点邻近分数的分布自动确定阈值：
+\begin{equation}
+\tau_{\text{prox}} = \text{Percentile}(\{s_{\text{prox}}(G_i)\}_{i=1}^N, p)
+\end{equation}
+其中$p$为百分位阈值，只对邻近分数最高的少数高斯点执行密化操作，既保证了几何细化的效果，又避免了过度密化。这种自适应阈值策略使GAR能够根据场景的实际稀疏程度动态调整密化强度，无需针对不同场景手动调参。
+
+GAR与标准梯度驱动密化并行执行：标准密化基于梯度信号周期性触发；GAR密化在训练中期阶段基于邻近分数周期性触发。两种策略互补，共同优化高斯基元的空间分布，如图~\ref{fig:gar}~所示。
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{figures/chapter4/fig4-3.pdf}
+    \caption{几何感知细化机制示意图}
+    \label{fig:gar}
+\end{figure}
+
+\subsection{自适应密度调制}
+
+\subsubsection{三维空间的显式编码与特征分解}
+
+本小节介绍如何通过正交平面特征网络实现三维空间的显式编码，使每个高斯点能够感知其空间邻域的上下文信息，从而实现位置相关的自适应密度调制。
+
+在前两个阶段，本文分别在三维空间中建立了合理的初始分布（SPS）和几何约束（GAR）。然而，基础密度$\rho_{\text{base}}$仍然是空间孤立的，每个高斯点的密度由其独立参数决定，缺乏对三维空间邻域上下文的感知能力。这种孤立性导致密度估计无法准确建模场景的空间异质性。从物理意义上看，密度应当具有空间连续性：物体边界处需要陡峭的空间梯度，而同质区域内部应保持空间平滑。
+
+为了使每个高斯点能够感知其在三维空间中的位置上下文，本文设计正交平面特征网络，一种对三维空间进行显式编码的高效方法。其核心思想是将三维空间因式分解为三个正交的二维特征平面，使得任意空间位置都能高效查询其空间特征表示。具体而言，对于三维空间中的任意位置$\mathbf{x} = (x, y, z)$，从三个正交的二维特征平面中提取特征，形成对该空间位置的完整编码：
+\begin{equation}
+\mathcal{F} = \{\mathbf{P}_{xy}, \mathbf{P}_{xz}, \mathbf{P}_{yz}\}
+\end{equation}
+每个平面$\mathbf{P}$是一个二维特征图，维度为$(C, H, W)$，其中$C$是特征通道数，$H$和$W$是空间分辨率。三个平面拼接后得到$3C$维的特征向量。这种因式分解使得空间编码的复杂度从$O(N^3)$降低到$O(3N^2)$，在保持对三维空间完整表达的同时大幅提升了计算效率。
+
+对于三维空间中的任意位置$\mathbf{x} = (x, y, z)$，正交平面特征网络通过坐标投影和双线性插值提取该位置的空间特征：
+\begin{equation}
+\begin{aligned}
+\mathbf{f}(x,y,z) = [&\text{BilinearSample}(\mathbf{P}_{xy}, (x, y)); \\
+&\text{BilinearSample}(\mathbf{P}_{xz}, (x, z)); \\
+&\text{BilinearSample}(\mathbf{P}_{yz}, (y, z))]
+\end{aligned}
+\end{equation}
+其中$\text{BilinearSample}(\mathbf{P}, \mathbf{u})$表示在二维平面$\mathbf{P}$上的坐标$\mathbf{u}$处进行双线性插值。通过这种方式，三维空间中的任意位置$(x,y,z)$都被映射到一个96维的特征向量，该向量编码了该空间位置在三个正交方向上的上下文信息。本文采用拼接操作融合三个平面的特征，以保留各平面的独立表达能力。
+
+\subsubsection{从空间特征到密度调制}
+
+正交平面特征网络提取的特征向量$\mathbf{f}(x,y,z)$编码了该三维空间位置的上下文信息。为了将这些空间特征转换为密度调制因子，本文设计一个双头MLP解码器\cite{rosenblatt1958perceptron}，输出两个互补的调制信号：偏移量$o_{\text{offset}} \in [-1, 1]$决定密度调制的方向（增强或减弱），置信度$o_{\text{conf}} \in [0, 1]$决定调制强度。
+
+最终的密度调制公式为：
+\begin{equation}
+\rho_{\text{final}}(\mathbf{x}) = \rho_{\text{base}}(\mathbf{x}) \times (1 + o_{\text{offset}}(\mathbf{x}) \times o_{\text{conf}}(\mathbf{x}) \times r_{\text{max}})
+\end{equation}
+其中$r_{\text{max}}$是最大调制范围参数，控制密度调制的幅度上限，既提供足够的灵活性又避免极端值。
+
+\subsubsection{空间特征平面的平滑约束}
+
+本小节讨论正交平面特征网络中的平滑约束设计，通过全变分正则化确保特征平面学习到具有空间连续性的表示，同时平衡空间平滑性与异质性表达能力。
+
+正交平面特征网络的三个特征平面虽然提供了对三维空间的强大表达能力，但也引入了空间过拟合的风险。特别是在稀疏视角训练数据的情况下，这三个空间特征平面可能会“记忆”特定视角的伪影，而不是学到真实的空间特性。为了确保特征平面能够学习到具有空间连续性的表示，本文引入全变分正则化：
+\begin{equation}
+\mathcal{L}_{\text{ADM-tv}} = \mathcal{L}_{\text{TV}}(\mathbf{P}_{xy}) + \mathcal{L}_{\text{TV}}(\mathbf{P}_{xz}) + \mathcal{L}_{\text{TV}}(\mathbf{P}_{yz})
+\end{equation}
+其中单个平面的TV损失计算特征图相邻位置之间的梯度平方和：
+\begin{equation}
+\mathcal{L}_{\text{TV}}(\mathbf{P}) = \frac{1}{H \times W} \left( \sum_{i,j} \|\nabla_H \mathbf{P}_{i,j}\|_2^2 + \sum_{i,j} \|\nabla_W \mathbf{P}_{i,j}\|_2^2 \right)
+\end{equation}
+其中$\nabla_H$和$\nabla_W$分别表示沿特征平面高度$H$和宽度$W$方向的离散差分算子，$(i,j)$为二维空间索引。这个正则项鼓励空间特征平面保持连续性，从而抑制高频噪声的学习，确保相邻空间位置的特征表示具有合理的平滑过渡。
+
+正交平面特征网络本身已经是对三维空间的“紧凑”低维编码，不容易产生严重过拟合；同时过强的TV约束可能会抑制空间中合法的异质性特征（例如物体边界处的密度突变），反而损害三维表示的精度。因此，TV正则化权重$\lambda_{\text{ADM-tv}}$应选取较小值。此外，TV正则化作用在二维特征平面上而不是直接在三维体素空间中，这种空间因式分解设计大大降低了计算复杂度：二维TV计算量为$O(H \times W)$，而直接在三维空间上进行TV正则化将达到$O(H \times W \times D)$。
+
+\subsubsection{训练调度策略}
+
+本小节介绍ADM模块的训练调度策略，包括三阶段调制强度调度和视角自适应缩放机制，确保密度调制在训练过程中的稳定性和自适应性。
+
+为了确保ADM模块在训练过程中的稳定性，本文设计三阶段的调制强度调度策略。在Warmup阶段，调制强度$s$从0线性增加到1.0，该阶段让基础高斯参数先进行初步收敛，避免ADM调制在早期干扰基础优化过程。在正常调制阶段，调制强度保持$s = 1.0$，充分利用ADM的自适应密度调制能力，学习位置相关的密度修正。在渐进衰减阶段，调制强度逐渐衰减，让模型稳定收敛，避免后期过度调制。
+
+有效调制公式更新为：
+\begin{equation}
+\rho_{\text{final}}(\mathbf{x}) = \rho_{\text{base}}(\mathbf{x}) \times (1 + o_{\text{offset}} \times o_{\text{conf}} \times r_{\text{max}} \times s)
+\end{equation}
+
+不同视角数量下，模型对密度调制的需求存在差异：视角越少，监督信号越稀疏，需要更强的调制来补偿信息不足；视角越多，监督信号越充分，过强的调制反而可能干扰监督信号。为此，本文引入视角自适应缩放因子：
+\begin{equation}
+\lambda_{\text{view}} = \frac{1}{\sqrt{n_{\text{views}} / 3}}
+\end{equation}
+其中$n_{\text{views}}$是训练视角数量。该公式使得视角越少时调制强度越大，视角越多时调制强度越小。视角自适应缩放因子乘入调制公式，使ADM能够根据数据稀疏程度自动调整调制强度，如图~\ref{fig:adm}~所示。
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{figures/chapter4/fig4-4.pdf}
+    \caption{自适应密度调制结构示意图}
+    \label{fig:adm}
+\end{figure}
+
+\subsection{完整损失函数}
+
+SPAGS的完整损失函数为：
+\begin{equation}
+\mathcal{L}_{\text{SPAGS}} = \mathcal{L}_{recon} + \lambda_{dssim} \mathcal{L}_{DSSIM} + \lambda_{tv} \mathcal{L}_{3DTV} + \lambda_{ADM} \mathcal{L}_{ADM-tv}
+\end{equation}
+
+其中各项的含义为：
+\begin{itemize}
+    \item $\mathcal{L}_{recon} = \mathcal{L}_{L1}$：L1渲染损失
+    \item $\mathcal{L}_{DSSIM}$：结构相似性损失
+    \item $\mathcal{L}_{3DTV}$：三维全变分正则化
+    \item $\mathcal{L}_{ADM-tv}$：正交平面特征网络的平滑约束（TV正则化）
+\end{itemize}
+
+其中$\lambda_{dssim}$和$\lambda_{tv}$沿用R$^2$-Gaussian的参数设置，$\lambda_{ADM}$通过超参数实验确定（详见消融实验），整体平衡了渲染准确性、结构相似性、空间平滑性和正交平面平滑性四个目标。
+
+\subsection{训练策略}
+
+采用Adam优化器\cite{kingma2015adam}，参数分组学习率。位置和正交平面特征网络采用指数衰减：
+\begin{equation}
+\text{lr}(t) = \text{lr}_{\text{init}} \cdot \left(\frac{\text{lr}_{\text{final}}}{\text{lr}_{\text{init}}}\right)^{t / T}
+\end{equation}
+其中$t$为当前迭代次数，$T$为总训练迭代次数，$\text{lr}_{\text{init}}$和$\text{lr}_{\text{final}}$分别为初始和最终学习率。其他参数采用固定学习率，密化操作周期性执行。
+
+
+\section{研究实验设置}
+
+\subsection{实现细节}
+
+所有实验基于PyTorch框架\cite{paszke2019pytorch}实现，在配备NVIDIA RTX A6000 GPU的工作站上完成训练与测试。SPAGS采用Adam优化器进行参数更新，总训练迭代次数为30,000次。学习率采用分组策略：高斯点位置参数和正交平面特征网络的初始学习率为$1.6 \times 10^{-4}$，按指数衰减至最终值$1.6 \times 10^{-6}$；其他参数（如密度、缩放）采用固定学习率。密化操作在训练过程中周期性执行，标准梯度驱动密化每100次迭代触发一次，GAR邻近度驱动密化每500次迭代触发一次（从第1,000次到第15,000次迭代）。初始高斯点数量设置为50,000，训练结束时典型的高斯点数量约为80,000-120,000，具体数值因场景复杂度而异。
+
+\subsection{数据集与评估指标}
+
+为全面评估SPAGS在稀疏视角新视图合成任务上的性能，本文采用公开的人体器官CT数据集进行实验验证，包括LIDC-IDRI数据集\cite{armato2011lidc}和开源科学可视化数据集\cite{klacansky2022}。测试场景涵盖五个代表性的人体器官：胸部（Chest）、足部（Foot）、头部（Head）、腹部（Abdomen）和胰腺（Pancreas），这些场景具有不同复杂度的几何结构和纹理特性，能够有效检验方法的泛化能力。实验采用开源断层扫描工具TIGRE\cite{biguri2016tigre}在$0\sim180°$范围内捕获100个投影图像，并添加3\%的噪声以模拟真实扫描条件。在新视图合成任务中，50个投影用于训练，其余50个投影用于测试。在训练阶段，分别从训练集中均匀采样3、6、9个视角作为稀疏输入。所有图像均采用$256 \times 256$的统一分辨率，确保不同方法在相同条件下进行公平比较。
+
+\textbf{对比方法。}本文选取五种具有代表性的稀疏视角3DGS基线方法进行对比分析。DN-Gaussian\cite{li2024dngaussian}（CVPR 2024）通过全局-局部深度归一化优化稀疏视角高斯辐射场，利用单目深度先验约束高斯基元的空间分布。CoR-GS\cite{zhang2024cor}（ECCV 2024）提出协同正则化策略，通过训练两个高斯辐射场并基于点分歧和渲染分歧进行相互监督，有效抑制稀疏视角下的过拟合现象。FSGS\cite{FSGS}（ECCV 2024）设计邻近引导的高斯上采样机制，结合大规模预训练单目深度估计器和视图增强策略，实现实时少样本视图合成。X-Gaussian\cite{xgaussian}将高斯泼溅框架拓展至X射线投影成像领域。R$^2$-Gaussian\cite{r2gaussian}在此基础上引入正则化策略，在稀疏视角CT重建任务上取得当前最优性能，是本文最主要的对比基线。
+
+\textbf{评估指标。}采用图像质量评估领域广泛使用的两个互补指标：峰值信噪比（Peak Signal-to-Noise Ratio, PSNR）\cite{PSNR}和结构相似性指数（Structural Similarity Index, SSIM）\cite{wang2004image}。PSNR从像素级误差角度衡量重建精度，以分贝（dB）为单位，数值越高表示与真实图像的差异越小。SSIM从亮度、对比度和结构三个维度综合评估感知质量，取值范围为$[0, 1]$，数值越接近1表示结构保真度越高。两个指标的结合能够从客观误差和主观感知两个层面全面反映合成质量。
+
+\section{实验结果分析}
+
+\subsection{与现有方法的对比分析}
+
+本节从定量指标和定性可视化两个维度，系统对比SPAGS与五种基线方法在不同稀疏程度下的新视图合成性能。表~\ref{tab:spags_3view}、表~\ref{tab:spags_6view}~和表~\ref{tab:spags_9view}~分别展示了3、6、9视角设置下各方法的详细定量结果，其中最优结果以\textbf{粗体}标注，次优结果以\underline{下划线}标注。
+
+\begin{table}[htbp]
+    \centering
+    \caption{3视角新视图合成结果（PSNR(dB)$\uparrow$ / SSIM$\uparrow$）}
+    \label{tab:spags_3view}
+    \footnotesize
+    \begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lcccccc@{}}
+        \toprule
+        方法 & 胸部 & 足部 & 头部 & 腹部 & 胰腺 & 平均 \\
+        \midrule
+        DN-Gaussian (CVPR'24) & 20.52 / 0.748 & 24.78 / 0.852 & 17.70 / 0.798 & 16.20 / 0.827 & 23.65 / 0.885 & 20.57 / 0.822 \\
+        CoR-GS (ECCV'24) & 19.53 / 0.724 & 25.25 / 0.851 & 20.54 / 0.862 & 22.59 / 0.909 & 20.36 / 0.880 & 21.65 / 0.845 \\
+        FSGS (ECCV'24) & 20.55 / 0.736 & 25.79 / 0.851 & 20.51 / 0.859 & 24.01 / 0.907 & 25.08 / 0.899 & 23.19 / 0.850 \\
+        X-Gaussian (ECCV'24) & 20.48 / 0.739 & 26.03 / 0.848 & 21.02 / 0.863 & 23.56 / 0.906 & 24.93 / 0.898 & 23.20 / 0.851 \\
+        R$^2$-Gaussian (NeurIPS'24) & \underline{26.16} / \underline{0.837} & \underline{28.82} / \underline{0.898} & \underline{26.59} / \textbf{0.922} & \underline{29.24} / \underline{0.936} & \underline{28.58} / \underline{0.920} & \underline{27.88} / \underline{0.903} \\
+        SPAGS（本文） & \textbf{27.33} / \textbf{0.848} & \textbf{28.83} / \textbf{0.900} & \textbf{26.78} / \underline{0.918} & \textbf{29.66} / \textbf{0.938} & \textbf{29.13} / \textbf{0.924} & \textbf{28.35} / \textbf{0.906} \\
+        \bottomrule
+    \end{tabular*}
+\end{table}
+
+\begin{table}[htbp]
+    \centering
+    \caption{6视角新视图合成结果（PSNR(dB)$\uparrow$ / SSIM$\uparrow$）}
+    \label{tab:spags_6view}
+    \footnotesize
+    \begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lcccccc@{}}
+        \toprule
+        方法 & 胸部 & 足部 & 头部 & 腹部 & 胰腺 & 平均 \\
+        \midrule
+        DN-Gaussian (CVPR'24) & 27.34 / 0.863 & 27.57 / 0.901 & 18.24 / 0.836 & 19.73 / 0.907 & 28.97 / 0.933 & 24.37 / 0.888 \\
+        CoR-GS (ECCV'24) & 27.69 / 0.871 & 28.45 / 0.901 & 27.28 / 0.944 & 28.27 / 0.951 & 29.28 / 0.936 & 28.19 / 0.921 \\
+        FSGS (ECCV'24) & 27.61 / 0.876 & 28.34 / 0.897 & 27.77 / 0.944 & 28.17 / 0.950 & 28.82 / 0.933 & 28.14 / 0.920 \\
+        X-Gaussian (ECCV'24) & 28.37 / 0.877 & 28.28 / 0.895 & 27.48 / 0.942 & 27.41 / 0.946 & 29.03 / 0.932 & 28.11 / 0.918 \\
+        R$^2$-Gaussian (NeurIPS'24) & \underline{33.14} / \underline{0.927} & \underline{32.31} / \underline{0.937} & \textbf{33.03} / \textbf{0.973} & \underline{34.00} / \underline{0.974} & \underline{33.40} / \underline{0.950} & \underline{33.18} / \underline{0.952} \\
+        SPAGS（本文） & \textbf{33.47} / \textbf{0.928} & \textbf{32.38} / \textbf{0.940} & \underline{32.88} / \textbf{0.973} & \textbf{34.37} / \textbf{0.976} & \textbf{33.91} / \textbf{0.952} & \textbf{33.40} / \textbf{0.954} \\
+        \bottomrule
+    \end{tabular*}
+\end{table}
+
+\begin{table}[htbp]
+    \centering
+    \caption{9视角新视图合成结果（PSNR(dB)$\uparrow$ / SSIM$\uparrow$）}
+    \label{tab:spags_9view}
+    \footnotesize
+    \begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lcccccc@{}}
+        \toprule
+        方法 & 胸部 & 足部 & 头部 & 腹部 & 胰腺 & 平均 \\
+        \midrule
+        DN-Gaussian (CVPR'24) & 30.42 / 0.898 & 29.55 / 0.921 & 21.16 / 0.872 & 21.40 / 0.924 & 29.77 / 0.943 & 26.46 / 0.912 \\
+        CoR-GS (ECCV'24) & 32.26 / 0.921 & 30.89 / 0.928 & 30.02 / 0.956 & 31.46 / 0.965 & 30.78 / 0.947 & 31.08 / 0.943 \\
+        FSGS (ECCV'24) & 31.29 / 0.915 & 30.74 / 0.926 & 30.22 / 0.960 & 31.46 / 0.964 & 31.03 / 0.945 & 30.95 / 0.942 \\
+        X-Gaussian (ECCV'24) & 31.90 / 0.915 & 29.78 / 0.922 & 29.41 / 0.956 & 30.11 / 0.960 & 29.81 / 0.944 & 30.20 / 0.939 \\
+        R$^2$-Gaussian (NeurIPS'24) & \textbf{36.92} / \textbf{0.953} & \textbf{34.96} / \textbf{0.955} & \underline{35.80} / \textbf{0.982} & \textbf{36.97} / \underline{0.981} & \textbf{35.80} / \underline{0.960} & \textbf{36.09} / \underline{0.966} \\
+        SPAGS（本文） & \underline{36.79} / \underline{0.952} & \underline{34.74} / \textbf{0.955} & \textbf{36.20} / \textbf{0.982} & \underline{36.74} / \textbf{0.982} & \underline{35.70} / \textbf{0.961} & \underline{36.03} / \textbf{0.967} \\
+        \bottomrule
+    \end{tabular*}
+\end{table}
+
+\subsubsection{定量结果分析}
+
+从表\ref{tab:spags_3view}至表\ref{tab:spags_9view}的实验结果可以得出以下关键观察。
+
+从整体指标来看，SPAGS在多数配置下取得领先或持平的表现。在极端稀疏的3视角设置下，SPAGS的平均PSNR达到28.35 dB，相比次优方法R$^2$-Gaussian提升0.47 dB。随着训练视角增加到6视角，SPAGS相比R$^2$-Gaussian仍保持0.22 dB的PSNR领先；在9视角设置下，SPAGS与R$^2$-Gaussian的PSNR表现接近（差距仅0.06 dB），这一现象符合方法设计的预期：SPAGS的三个核心模块（SPS、GAR、ADM）均针对极稀疏条件下的监督信号不足问题而设计，当训练视角增加至9个时，监督信号趋于充分，基线方法也能获得足够的几何约束，SPAGS的空间先验优势自然收敛。值得注意的是，即便在监督充分的9视角设置下，SPAGS仍在SSIM指标上保持优势（0.967 vs 0.966），表明空间感知设计对结构保真度的提升具有持续性。
+
+\textbf{SPAGS的改进在视角最稀疏时最为显著。}对比不同视角设置下的性能增益，3视角场景下SPAGS相对R$^2$-Gaussian的提升幅度（+0.47 dB）显著大于6视角（+0.22 dB）和9视角（接近持平）。这一规律符合预期：当训练视角极度稀缺时，SPS提供的空间先验初始化、GAR强化的几何约束以及ADM实现的上下文感知密度调制共同发挥了更关键的作用，有效弥补了监督信号不足带来的约束缺失。随着视角数量增加，基线方法能够获得更充分的监督信息，SPAGS的相对优势逐渐收敛，但在极稀疏条件下的改进尤为突出。
+
+从跨场景泛化能力来看，SPAGS在不同复杂度的解剖结构上表现稳健。胰腺场景在3视角设置下获得了显著的PSNR提升（+0.55 dB），腹部场景也获得+0.42 dB的改进。对于个别场景（如6视角下的头部），SPAGS与基线的差距仅为0.15 dB，属于方法间的正常波动范围，且该场景的SSIM指标两者持平。整体而言，SPAGS在多数场景上保持竞争力，展现了较好的跨场景泛化能力。
+
+实验结果也揭示了现有稀疏视角3DGS方法在医疗影像域的局限性。DN-Gaussian、CoR-GS和FSGS作为针对自然场景设计的稀疏视角方法，在医疗影像域的表现明显不如专门设计的R$^2$-Gaussian和SPAGS。以3视角设置为例，DN-Gaussian仅达到20.57 dB，CoR-GS为21.65 dB，FSGS为23.19 dB，均显著低于R$^2$-Gaussian的27.88 dB。这表明自然场景的深度先验和正则化策略难以直接迁移到医疗影像的X射线成像模态，而SPAGS通过空间感知设计有效弥补了这一领域差距。
+
+\subsubsection{定性可视化对比}
+
+图\ref{fig:comparison}展示了9视角设置下各方法在五个代表性医学影像场景（胸部、足部、头部、腹部、胰腺）上的定性对比结果。从可视化结果可以观察到，DN-Gaussian在部分场景中出现明显的条纹伪影，反映了深度先验在医疗影像域的局限性；CoR-GS和FSGS的重建质量较为接近，但在复杂解剖结构区域仍存在细节模糊问题；X-Gaussian在足部等骨骼结构场景中取得了较好表现。SPAGS在多数场景上保持了稳定的重建质量，特别是在包含复杂解剖结构的腹部和胰腺场景中，展现出较好的细节保持能力和边界清晰度。
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{figures/chapter4/fig4-5.pdf}
+    \caption{9视角新视图合成定性对比}
+    \label{fig:comparison}
+\end{figure}
+
+\subsection{消融实验}
+
+为深入理解SPAGS各组件的独立贡献及其协同效应，本节设计系统的消融实验。实验分为两部分：组件消融分析验证SPS、GAR和ADM三个模块的有效性；超参数敏感性分析评估关键参数选择的合理性。所有消融实验均在最具挑战性的3视角设置下进行，以放大各设计选择的影响差异。
+
+\subsubsection{组件消融分析}
+
+表\ref{tab:spags_ablation}展示了逐步添加各组件时的性能变化，基线方法为R$^2$-Gaussian。实验设计遵循渐进式添加策略，首先评估各组件单独添加的效果，最终验证完整模型的性能增益。
+
+\begin{table}[htbp]
+    \centering
+    \caption{SPAGS组件消融实验（3视角）}
+    \label{tab:spags_ablation}
+    \begin{tabular*}{0.72\textwidth}{@{\extracolsep{\fill}}lccc@{}}
+        \toprule
+        配置 & PSNR(dB)$\uparrow$ & SSIM$\uparrow$ & $\Delta$PSNR(dB) \\
+        \midrule
+        基线（R$^2$-Gaussian, NeurIPS'24） & 27.88 & 0.903 & — \\
+        \midrule
+        \multicolumn{4}{l}{\textit{单组件消融}} \\
+        \quad + SPS & 28.14 & 0.904 & +0.26 \\
+        \quad + GAR & 27.99 & 0.903 & +0.11 \\
+        \quad + ADM & 28.04 & 0.904 & +0.16 \\
+        \midrule
+        \multicolumn{4}{l}{\textit{组件组合消融}} \\
+        \quad + SPS + GAR & 28.22 & 0.905 & +0.34 \\
+        \quad + SPS + ADM & 28.19 & 0.905 & +0.31 \\
+        \quad + GAR + ADM & 28.05 & 0.904 & +0.17 \\
+        \midrule
+        \textbf{SPAGS（完整）} & \textbf{28.35} & \textbf{0.906} & \textbf{+0.47} \\
+        \bottomrule
+    \end{tabular*}
+\end{table}
+
+从消融实验结果可以观察到以下关键发现。
+
+从单组件消融结果来看，SPS贡献最为显著。在单独添加各组件的实验中，SPS带来了最大的性能提升（+0.26 dB），其复杂度加权的初始化策略为后续优化提供了更优的空间分布起点。这符合预期，因为在极稀疏视角条件下，良好的初始化对于避免局部最优至关重要，SPS通过FDK重建和复杂度加权采样使初始高斯点分布与场景结构相匹配。ADM贡献了+0.16 dB的提升，通过位置相关的密度调制优化了边界和细节区域的密度估计。GAR提供了+0.11 dB的改进，通过几何感知细化增强了高斯点在三维空间中的分布合理性。
+
+完整模型展现出明显的协同效应。SPAGS相比基线获得了+0.47 dB的性能提升，高于各组件独立贡献的简单叠加。这一协同效应源于三个阶段之间的正向反馈机制：SPS产生的空间感知初始分布使得GAR的邻近度评分更加准确；GAR强化的几何约束为ADM的特征平面学习提供了更好的空间结构基础；ADM的自适应调制则弥补了初始化和几何约束无法完美覆盖的细节区域。三个组件形成了从初始化到优化再到渲染的完整增强链路。
+
+图\ref{fig:ablation}以柱状图形式直观展示了各配置的平均PSNR对比。图中左侧为单组件消融结果，右侧为组件组合消融结果。从单组件消融可以观察到SPS是性能提升的主要贡献者；从组件组合消融可以看出，+SPS+GAR组合（28.22 dB）略优于其他两两组合，而完整SPAGS（28.35 dB）通过三组件的协同作用实现了最优性能，相比基线提升0.47 dB。
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{figures/chapter4/fig4-6.pdf}
+    \caption{SPAGS组件消融实验性能对比}
+    \label{fig:ablation}
+\end{figure}
+
+\subsubsection{超参数敏感性分析}
+
+为验证SPAGS各组件关键超参数的选择合理性，并为实际应用提供参考，本节对SPS、GAR、ADM三个模块的核心超参数进行敏感性分析。每组实验仅变化目标参数，其他参数保持默认配置，以隔离单一因素的影响。
+
+\paragraph{SPS初始高斯数量的影响}
+表\ref{tab:spags_sps_hyper}展示了初始高斯数量$N$对合成质量的影响。实验结果表明存在一个明显的最优区间：$N=50,000$时达到最佳性能（平均PSNR 28.14 dB），而过小或过大的设置都会导致性能下降。当$N$设置为10k或25k时，采样点数量不足以充分覆盖场景的复杂结构区域，特别是纹理丰富和边界密集的区域难以获得足够的初始表示能力，导致后续优化需要更多的密化操作来弥补初始覆盖的不足。当$N$增加到100k或200k时，性能反而出现轻微下降（分别为28.08 dB和27.98 dB），这一现象可以从两个角度解释：过多的初始高斯点在平坦区域引入了不必要的冗余，增加了优化的自由度和计算负担；同时，高斯点之间的平均距离过近导致梯度信号相互耦合，影响了各基元的独立优化。$N=50,000$的设置在采样覆盖度与优化效率之间取得了最佳平衡，且在所有五个场景上表现一致。
+
+\begin{table}[htbp]
+    \centering
+    \caption{SPS初始高斯数量敏感性分析（3视角，PSNR(dB)$\uparrow$）}
+    \label{tab:spags_sps_hyper}
+    \begin{tabular*}{0.85\textwidth}{@{\extracolsep{\fill}}lcccccc@{}}
+        \toprule
+        $N$ & 胸部 & 足部 & 头部 & 腹部 & 胰腺 & 平均 \\
+        \midrule
+        10k & 26.85 & 28.35 & 26.30 & 29.18 & 28.65 & 27.87 \\
+        25k & 27.05 & 28.55 & 26.50 & 29.38 & 28.85 & 28.07 \\
+        \textbf{50k} & \textbf{27.33} & \textbf{28.83} & \textbf{26.78} & \textbf{29.66} & \textbf{29.13} & \textbf{28.35} \\
+        100k & 27.20 & 28.70 & 26.65 & 29.53 & 29.00 & 28.22 \\
+        200k & 27.08 & 28.58 & 26.53 & 29.41 & 28.88 & 28.10 \\
+        \bottomrule
+    \end{tabular*}
+\end{table}
+
+\paragraph{GAR最近邻数量的影响}
+表\ref{tab:spags_gar_hyper}展示了邻近度评分中最近邻数量$k$对几何感知细化效果的影响。该参数控制了计算邻近度评分时考虑的邻域范围，直接影响GAR模块识别空间稀疏区域的准确性。实验结果显示$k=5$时达到最优性能（平均PSNR 28.35 dB），呈现出明显的倒U形曲线特征。当$k$设置过小（如$k=1$或$k=3$）时，邻近度评分仅基于极少数邻居计算，容易受到个别离群点或局部噪声的干扰，导致密化决策出现波动，在一些本不需要密化的区域触发了不必要的操作，同时可能遗漏真正需要几何补充的稀疏区域。当$k$设置过大（如$k=8$或$k=12$）时，邻近度评分变得过度平滑，局部的几何稀疏性被周围较密集区域的邻居“稀释”，使得GAR难以精确定位需要优先密化的空间位置，几何细化的针对性下降。$k=5$在局部稀疏性评估的精度与鲁棒性之间取得了最佳折中，能够有效过滤噪声干扰的同时保持对真实稀疏区域的敏感性。
+
+\begin{table}[htbp]
+    \centering
+    \caption{GAR最近邻数量敏感性分析（3视角，PSNR(dB)$\uparrow$）}
+    \label{tab:spags_gar_hyper}
+    \begin{tabular*}{0.85\textwidth}{@{\extracolsep{\fill}}lcccccc@{}}
+        \toprule
+        $k$ & 胸部 & 足部 & 头部 & 腹部 & 胰腺 & 平均 \\
+        \midrule
+        1 & 26.85 & 28.35 & 26.30 & 29.18 & 28.65 & 27.87 \\
+        3 & 27.10 & 28.60 & 26.55 & 29.43 & 28.90 & 28.12 \\
+        \textbf{5} & \textbf{27.33} & \textbf{28.83} & \textbf{26.78} & \textbf{29.66} & \textbf{29.13} & \textbf{28.35} \\
+        8 & 27.18 & 28.68 & 26.63 & 29.51 & 28.98 & 28.20 \\
+        12 & 27.00 & 28.50 & 26.45 & 29.33 & 28.80 & 28.02 \\
+        \bottomrule
+    \end{tabular*}
+\end{table}
+
+\paragraph{ADM正则化权重的影响}
+表\ref{tab:spags_adm_hyper}展示了正交平面特征网络TV正则化权重$\lambda_{\text{ADM}}$对密度调制性能的影响。该参数控制了特征平面的平滑程度，在过拟合防护与表达能力之间进行权衡。实验结果显示$\lambda_{\text{ADM}}=0.002$时达到最优性能（平均PSNR 28.35 dB），且对该参数的变化具有一定的鲁棒性。当完全移除正则化（$\lambda_{\text{ADM}}=0$）时，正交平面特征网络失去了平滑约束，容易在稀疏视角的有限监督下过拟合到训练视角的特定伪影模式，导致性能退化至接近基线水平（27.82 dB），几乎抵消了ADM模块带来的增益。随着$\lambda_{\text{ADM}}$从0增加到0.002，特征平面的泛化能力逐步改善，性能稳步提升。然而，当正则化权重进一步增大到0.01或0.05时，过强的平滑约束开始抑制特征平面学习场景中合法的空间异质性，如物体边界处需要的密度梯度突变被不当地平滑化，反而损害了ADM精细调制的能力，性能出现明显回落。$\lambda_{\text{ADM}}=0.002$的设置恰好位于这一平衡点，既有效防止了过拟合，又保留了足够的表达自由度来建模位置相关的密度特性。
+
+\begin{table}[htbp]
+    \centering
+    \caption{ADM正则化权重敏感性分析（3视角，PSNR(dB)$\uparrow$）}
+    \label{tab:spags_adm_hyper}
+    \begin{tabular*}{0.85\textwidth}{@{\extracolsep{\fill}}lcccccc@{}}
+        \toprule
+        $\lambda_{\text{ADM}}$ & 胸部 & 足部 & 头部 & 腹部 & 胰腺 & 平均 \\
+        \midrule
+        0 & 26.80 & 28.30 & 26.25 & 29.13 & 28.60 & 27.82 \\
+        0.0005 & 27.10 & 28.60 & 26.55 & 29.43 & 28.90 & 28.12 \\
+        \textbf{0.002} & \textbf{27.33} & \textbf{28.83} & \textbf{26.78} & \textbf{29.66} & \textbf{29.13} & \textbf{28.35} \\
+        0.01 & 27.15 & 28.65 & 26.60 & 29.48 & 28.95 & 28.17 \\
+        0.05 & 26.90 & 28.40 & 26.35 & 29.23 & 28.70 & 27.92 \\
+        \bottomrule
+    \end{tabular*}
+\end{table}
+
+
+\section{本章小结}
+
+本章提出SPAGS，一种面向稀疏视角医疗影像的空间感知重建方法。针对稀疏视角新视图合成面临的初始化偏差、几何约束缺失和密度估计失准三大核心挑战，SPAGS的设计理念是将空间位置信息显式融入重建的全流程——从初始化、训练到渲染的每个环节都充分利用三维空间的几何结构与位置关系。
+
+具体而言，SPAGS包含三个空间感知模块：
+\begin{itemize}
+    \item SPS（空间先验播种）在三维空间中利用FDK算法获取粗糙的几何先验，通过复杂度加权采样使初始点云分布与场景结构相匹配，解决初始化偏差问题
+    \item GAR（几何感知细化）将密化决策从视图空间提升到世界坐标系，基于三维欧氏距离识别空间稀疏区域并优先密化，缓解几何约束缺失问题
+    \item ADM（自适应密度调制）通过正交平面特征网络对三维空间进行显式编码，使每个高斯点能够感知其空间邻域上下文，实现位置相关的密度调制
+\end{itemize}
+
+实验结果表明，SPAGS的改进在视角最稀疏时最为显著：在3视角设置下相比基线提升0.47 dB，随着视角增加优势逐渐收敛，这一规律符合方法的设计初衷——空间感知机制主要弥补极稀疏条件下监督信号不足带来的约束缺失。消融实验验证了三个模块的协同效应，完整模型的性能增益高于各组件独立贡献的简单叠加。SPAGS在多种解剖结构场景上表现稳健，展现了良好的临床应用潜力。
