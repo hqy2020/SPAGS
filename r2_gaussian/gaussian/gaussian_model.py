@@ -199,7 +199,8 @@ class GaussianModel:
                     schedule_s=self.adm_schedule_s,
                     view_scale=self.adm_view_scale
                 )
-                return base_density * modulation.squeeze(-1)
+                # 前向：ADM调制；反向：梯度只流到base_density（叶子节点），绕开CUDA形状冲突
+                return base_density * modulation.squeeze(-1).detach()
             except Exception:
                 return base_density
         return base_density
