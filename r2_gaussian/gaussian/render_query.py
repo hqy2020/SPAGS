@@ -56,7 +56,11 @@ def query(
     voxelizer = GaussianVoxelizer(voxel_settings=voxel_settings)
 
     means3D = pc.get_xyz
-    density = pc.get_density
+    raw_density = pc.get_density
+    if raw_density.dim() == 1:
+        density = raw_density.unsqueeze(-1)
+    else:
+        density = raw_density
 
     scales = None
     rotations = None
@@ -135,7 +139,12 @@ def render(
 
     means3D = pc.get_xyz
     means2D = screenspace_points
-    density = pc.get_density
+    raw_density = pc.get_density
+    # 确保密度是 2D (N, 1) 以匹配 CUDA kernel 的 grad_opacities 形状 {P, 1}
+    if raw_density.dim() == 1:
+        density = raw_density.unsqueeze(-1)
+    else:
+        density = raw_density
     
     # SSS: ENHANCED Student's t distribution with progressive scooping
     if pc.use_student_t:
