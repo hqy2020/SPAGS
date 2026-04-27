@@ -715,13 +715,14 @@ def training(
                 tv_vol_center = (bbox[0] + tv_vol_sVoxel / 2) + (
                     bbox[1] - tv_vol_sVoxel - bbox[0]
                 ) * torch.rand(3)
-                vol_pred = query(
-                    GsDict[f"gs{i}"],
-                    tv_vol_center,
-                    tv_vol_nVoxel,
-                    tv_vol_sVoxel,
-                    pipe,
-                )["vol"]
+                with torch.no_grad():
+                    vol_pred = query(
+                        GsDict[f"gs{i}"],
+                        tv_vol_center,
+                        tv_vol_nVoxel,
+                        tv_vol_sVoxel,
+                        pipe,
+                    )["vol"]
                 loss_tv = tv_3d_loss(vol_pred, reduction="mean")
                 LossDict[f"loss_gs{i}"] += opt.lambda_tv * loss_tv
         
