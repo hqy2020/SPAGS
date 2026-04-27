@@ -8,3 +8,4 @@ c19578e	baseline	foot_50_3views	27.4827	0.8211	-	-	-	-	keep	baseline (no ADM) 30
 bda2c43	adm_rmax1.5_001	foot_50_3views	nan	nan	32	1.5	0.002	256	reject	ADM r_max=1.5: NaN崩溃, 调制过强导致负密度
 bda2c43	adm_feat64_001	foot_50_3views	28.9034	0.8227	64	1.0	0.002	256	keep	ADM feat_dim=64: PSNR再创新高28.90(+1.42dB), SSIM也超越baseline
 7b85bf8	adm_feat128_001	foot_50_3views	29.0035	0.8181	128	1.0	0.002	256	keep	ADM feat_dim=128: PSNR微增至29.00(+1.52dB), 但SSIM略降, 训练速度3x减慢
+7b85bf8	adm_fsgsprox_001	foot_50_3views	28.8397	0.8195	64	1.0	0.002	256	keep	GAR(FSGS Prox)+ADM: PSNR=28.84略低于纯ADM 28.90, SSIM 0.820接近
