@@ -3,3 +3,4 @@ c19578e	baseline	foot_50_3views	27.4827	0.8211	-	-	-	-	keep	baseline (no ADM) 30
 4e4378a	adm_phase1	foot_50_3views	26.4310	0.8119	32	0.5	0.002	256	reject	ADM default: below baseline (-1.05dB), TV reg does not help ADM learn
 4e4378a	adm_tv0.0	foot_50_3views	26.4511	0.8100	32	0.5	0.0	256	reject	ADM tv=0: no TV signal, ADM untrained, same result as tv=0.002
 4e4378a	adm_tv0.001	foot_50_3views	26.4481	0.8109	32	0.5	0.001	256	reject	ADM tv=0.001: same ~26.45, TV loss irrelevant for ADM
+9038d66	adm_gradfix_001	foot_50_3views	28.2981	0.8172	32	0.5	0.002	256	keep	ADM梯度修复: 移除.detach(), PSNR首次超越baseline(+0.82dB)
