@@ -1,1 +1,2 @@
 commit	run_name	dataset	psnr_2d	ssim_2d	adm_feat_dim	adm_r_max	adm_tv_weight	adm_grid_size	status	description
+c19578e	baseline	foot_50_3views	27.4827	0.8211	-	-	-	-	keep	baseline (no ADM) 3000it
