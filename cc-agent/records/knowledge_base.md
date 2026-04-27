@@ -27,8 +27,17 @@
 - **参考文档：** 相关分析报告链接
 ```
 
-### 示例记录区
-*（待添加首个成功案例）*
+### 2026-04-28 ADM 梯度修复成功
+- **创新点来源：** 论文 ADM 模块（Adaptive Density Modulation）梯度阻断问题修复
+- **实现方法：** 移除 `get_density()` 中的 `.detach()`，使 ADM 三平面特征网络的梯度通过 CUDA rasterizer 反向传播到渲染损失
+- **性能提升：** PSNR +0.82 dB（27.48 → 28.30），最终推至 +1.42 dB（28.90 with feat_dim=64, r_max=1.0）
+- **关键决策：** 
+  1. 发现 `.detach()` 阻断梯度流是 ADM 不工作的根本原因
+  2. r_max=1.0 比 r_max=0.5 效果更好（+0.30 dB）
+  3. feat_dim=64 比 feat_dim=32 效果更好（+0.30 dB）
+- **可复用组件：** `r2_gaussian/utils/adm_module.py` 中的 TriPlaneFeatureNetwork + DualHeadMLPDecoder
+- **参考文档：** `cc-agent/autoresearch/adm_gradient_fix_validation_report.md`
+- **参数基线：** grid_size=256, feat_dim=64, r_max=1.0, tv_weight=0.002
 
 ---
 
@@ -45,8 +54,20 @@
 - **参考文档：** result_analysis.md 路径
 ```
 
-### 示例记录区
-*（待添加首个失败教训）*
+### 2026-04-28 ADM r_max=1.5 导致 NaN 崩溃
+- **尝试目标：** 探索更大的调制范围 r_max=1.5 是否能进一步提升 PSNR
+- **失败原因：** 调制过强（r_max=1.5）导致某些区域的密度变为负值，数值不稳定
+- **错误假设：** 认为 r_max=1.0→1.5 的线性扩展能继续提升
+- **性能影响：** NaN（完全崩溃）
+- **教训总结：** CT 密度值范围有限（~0.05-0.5），r_max 不应超过 1.0-1.2 范围
+- **参考文档：** `output/autoresearch/adm_rmax1.5_001.log`
+
+### 2026-04-28 ADM TV loss 在梯度阻断时无效
+- **尝试目标：** 通过调整 TV loss 权重使 ADM 学习
+- **失败原因：** `.detach()` 阻断 ADM 梯度，ADM 无法从渲染损失或 TV loss 学习有效信号
+- **错误假设：** 认为 TV 正则化能单独驱动 ADM 训练
+- **性能影响：** PSNR=26.43-26.45（低于 baseline 27.48）
+- **教训总结：** 任何形式的 ADM 训练都必须有梯度流通过渲染损失；TV loss 在梯度修复后才生效
 
 ---
 
