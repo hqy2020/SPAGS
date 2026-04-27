@@ -1,6 +1,14 @@
-# 决策日志
+# 决策日志 — SPAGS 空间感知自主研究
 
-## 2026-04-27: ADM 模块实现决策
+## 实验记录格式
+每条记录包含：
+```
+YYYY-MM-DD HH:MM | exp-<name> | PSNR=XX.XXXX/SSIM=XX.XXXX | 参数: ... | 状态: keep/reject | 分析: ...
+```
+
+## 历史记录
+
+### 2026-04-27: ADM 模块实现决策
 - **背景**: 论文中描述的 ADM（Adaptive Density Modulation）三平面特征网络尚未在代码中实现
 - **决策**: 实现 ADM 模块，包含 TriPlaneFeatureNetwork + DualHeadMLPDecoder
 - **方案**: 
@@ -10,4 +18,17 @@
   - 修改 `arguments/__init__.py` 添加参数
 - **参数**: grid_size=256, feat_dim=32, r_max=0.5, tv_weight=0.002
 - **调度**: 三阶段（warmup 20% → full 50% → decay 30%）
-- **依赖项**: 需要数据到位后验证
+- **结果**: PSNR=26.43 (低于 baseline 27.48) — ADM 梯度被 detach
+- **分析**: ADM 仅通过 TV loss 学习，无法从 rendering loss 获得有效梯度
+
+### 2026-04-28: 空间感知自主研究体系搭建
+- **背景**: 四个相关论文调研完成（X2-Gaussian, DNGaussian, FSGS, CoR-GS）
+- **决策**: 搭建每小时自动运行的自主研究系统
+- **方案**: 
+  - 创建 skill `spags-spatial-perception-research`
+  - 创建 cron job（每小时 0 分执行）
+  - 每次实验自动记录到 results.tsv 和 decision_log.md
+  - 每次实验后 git commit + push 到 GitHub
+- **报告位置**: `cc-agent/autoresearch/reports/`
+- **当前问题**: ADM PSNR(26.45) < baseline(27.48)
+- **下一步**: 修复 ADM 梯度流
