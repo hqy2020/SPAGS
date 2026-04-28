@@ -138,3 +138,9 @@
    138|
    139|# === 2026-04-28 17:00 ADM N=1参数探索 ===
    140|fd803db\\tfoot_N1_adm128\tfoot_50_3views\t29.8322\t0.8818\t128\t1.0\t0.002\t256\tkeep\tADM feat128 N=1: PSNR=29.83低于feat64 29.88(-0.05dB); N=1负收益; 峰值it1000=30.10后递减
+
+# === 2026-04-28 18:00 TV loss behavior + jaw ADM === 
+961be7a\tfoot_N1_adm64_tv0.0\tfoot_50_3views\t30.0514\t0.8912\t64\t1.0\t0.0\t256\tkeep\tADM N=1 feat64 tv=0.0: PSNR=30.05超越tv=0.002版29.88(+0.17dB); tv_loss完全不用; 轨迹it1000=30.00/it2000=30.16峰/it3000=30.05; 接近corgs(30.12)仅差0.07dB!
+961be7a\tjaw_N1_adm64\tjaw_50_3views\t25.5894\t0.8292\t64\t1.0\t0.002\t256\tkeep\tADM N=1 on jaw: PSNR=25.59(it1000峰25.84), 需jaw_N1_r2gaussian基线做对比
+2026-04-28 18:00\tfoot_N1_adm64_tv0.0\t30.0514\t0.8912\t23.6062\t0.7152\tfoot_50_3views\tspags(adm_tv0)
+2026-04-28 18:00\tjaw_N1_adm64\t25.5894\t0.8292\t25.5192\t0.5925\tjaw_50_3views\tspags(adm_n1)

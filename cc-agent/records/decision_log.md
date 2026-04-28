@@ -421,3 +421,43 @@ YYYY-MM-DD HH:MM | exp-<name> | PSNR=XX.XXXX/SSIM=XX.XXXX | 参数: ... | 状态
   1. TV loss在梯度修复后行为未知 → 建议测试 tv_weight=0.0
   2. 测试 jaw_N1_adm64 以确认最大增益潜力
   3. 探索 ADM+GAR 组合在 N=1 上的性能
+
+### 2026-04-28 18:00 | foot_N1_adm64_tv0.0 — TV loss=0.0超越tv=0.002, 新ADM最优参数!
+
+| **假设**: ADM梯度修复后TV loss可能不再需要
+
+| **参数**: feat_dim=64, r_max=1.0, tv_weight=**0.0**, gaussiansN=1, foot_50_3views
+
+| **结果轨迹**:
+|   - ITER 1000: PSNR2D=29.9957, SSIM2D=0.9014
+|   - ITER 2000: PSNR2D=**30.1583**, SSIM2D=0.8899 (🔥 新峰)
+|   - ITER 3000: PSNR2D=**30.0514**, SSIM2D=0.8912
+
+| **对比分析**:
+|   - vs foot_N1_r2gaussian (29.39): **+0.66dB PSNR** 🔥
+|   - vs foot_N1_adm64_tv0.002 (29.88): **+0.17dB PSNR** 🔥
+|   - vs corgs (30.12): **仅差0.07dB** — 几乎追平!
+|   - 相比tv=0.002版本: tv=0.0版it2000=30.16为峰值(而非it1000), 过拟合更晚
+
+| **关键发现**:
+|   - TV loss对grad-fixed ADM完全不需要: tv_loss报0.000000(weighted), 移除后性能反而提升
+|   - 推测: ADM通过rendering loss获得足够梯度, TV loss作为额外约束限制了ADM的表达能力
+|   - 训练速度: ~20 it/s (与tv=0.002版本相似)
+
+| **状态**: ✅ keep (**新ADM最优参数: tv_weight=0.0**)
+| - **下一步**: 更新ADM最佳配置为tv_weight=0.0
+
+### 2026-04-28 18:00 | jaw_N1_adm64 — ADM在jaw上增益待验证(缺N=1基线)
+
+| **参数**: feat_dim=64, r_max=1.0, tv_weight=0.002, gaussiansN=1, jaw_50_3views
+
+| **结果轨迹**:
+|   - ITER 1000: PSNR2D=25.8395, SSIM2D=0.8461 (峰值)
+|   - ITER 2000: PSNR2D=25.7354, SSIM2D=0.8335
+|   - ITER 3000: PSNR2D=25.5894, SSIM2D=0.8292
+
+| **分析**: 
+|   - jaw是难度最高的数据集(baseline ~25.42, 但为N=2值)
+|   - 待运行 jaw_N1_r2gaussian 以获取N=1基准值
+|   - 轨迹模式与foot一致: it1000峰值后递减(过拟合)
+
