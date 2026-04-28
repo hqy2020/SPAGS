@@ -167,238 +167,257 @@ YYYY-MM-DD HH:MM | exp-<name> | PSNR=XX.XXXX/SSIM=XX.XXXX | 参数: ... | 状态
   | dngaussian | 33.2847 | 🥉 |
   | r2gaussian | 33.2370 | 4 |
   | fsgs | 33.2028 | 5 |
-|  | spags (ADM) | 33.1083 | 6 |
-|- **SPAGS在6视角下排名最后** — ADM在充足视角下无优势
-|
+|| spags (ADM) | 33.1083 | 6 |
+||- **SPAGS在6视角下排名最后** — ADM在充足视角下无优势
+||
 ### 2026-04-28 11:00 | 实验 #X: foot_50_9views_corgs — corgs在9视角foot数据集上最优
-|- **方法**: corgs (CoR-GS) on foot_50_9views
-|- **结果**: PSNR2D=35.5631, SSIM2D=0.9552, PSNR3D=27.2974, SSIM3D=0.8039
-|- **foot_50_9views方法排名**:
-|  | 方法 | PSNR | SSIM | 排名 |
-|  |-----|------|------|------|
-|  | corgs | 35.5631 | 0.9552 | 🥇 |
-|  | r2gaussian | 35.5573 | 0.9468 | 🥈 |
-|  | fsgs | 35.4357 | 0.9482 | 🥉 |
-|- **分析**: corgs在foot_50_9views上表现最佳，PSNR和SSIM均领先。corgs优势在更多视角下更明显。
-||- **状态**: ✅ keep
-||- **下一步**: foot_50_9views_spags (测试ADM在9视角foot上的表现)
-|
-|### 2026-04-28 12:00 | foot_50_9views_spags完成 — ADM在9视角foot上排名末位
-||- **结果**: PSNR2D=35.3367, SSIM2D=0.9486
-||- **foot_50_9views方法排名 (PSNR2D)**:
+||- **方法**: corgs (CoR-GS) on foot_50_9views
+||- **结果**: PSNR2D=35.5631, SSIM2D=0.9552, PSNR3D=27.2974, SSIM3D=0.8039
+||- **foot_50_9views方法排名**:
 ||  | 方法 | PSNR | SSIM | 排名 |
 ||  |-----|------|------|------|
 ||  | corgs | 35.5631 | 0.9552 | 🥇 |
 ||  | r2gaussian | 35.5573 | 0.9468 | 🥈 |
-||  | xgaussian | 35.5301 | 0.9473 | 🥉 |
-||  | dngaussian | 35.4420 | 0.9496 | 4 |
-||  | fsgs | 35.4357 | 0.9482 | 5 |
-||  | spags (ADM) | 35.3367 | 0.9486 | 6 |
-||- **分析**: 与chest/head数据集的规律一致 — ADM在9视角下无优势。spags在foot_50_9views排名最后(-0.22dB vs corgs)
-||- **核心发现再次确认**: ADM收益与视角数负相关，与数据难度正相关
-||- **状态**: ✅ keep
-||- **下一步**: 展开jaw/pancreas数据集的全方法比对实验（共6方法×6数据集=36实验）
-|
-|### 2026-04-28 12:00 | 实验矩阵扩展 — jaw/pancreas新数据集加入
-||- **背景**: 发现jaw/pancreas数据集可用, 实验矩阵从3器官扩展到5器官
-||- **新数据集**: jaw_50_3v/6v/9v, pancreas_50_3v/6v/9v (共6个新数据集)
-||- **total实验**: 90 (5器官×3视角×6方法)
-||- **已完成**: chest(18) + foot(18) + head(18) = 54 ✅
-||- **剩余**: jaw(18) + pancreas(18) = 36
-||- **jaw_50_3views_r2gaussian baseline**: PSNR2D=25.42, SSIM2D=0.8289 — 远低于其他数据集，jaw是最难的
-||- **下一步**: 依次运行jaw+pancreas上全部6方法（2 GPU并行）
-|
-|### 2026-04-28 12:13 | jaw_50_3views全方法比对完成 — SPAGS排名第二！
-||- **结果 (jaw_50_3views PSNR2D)**:
-||  | 方法 | PSNR | SSIM | 排名 | 备注 |
-||  |-----|------|------|------|------|
-||  | corgs | 25.8061 | 0.8586 | 🥇 | 大幅领先 |
-||  | spags (ADM) | 25.5676 | 0.8289 | 🥈 | +0.15dB over r2gaussian |
-||  | dngaussian | 25.5135 | 0.8293 | 🥉 | +0.10dB |
-||  | fsgs | 25.4330 | 0.8278 | 4 | +0.02dB |
-||  | r2gaussian | 25.4160 | 0.8289 | 5 | baseline |
-||  | xgaussian | 25.3936 | 0.8307 | 6 | -0.02dB |
-||- **关键分析**: 
-||  - jaw是迄今最难的数据集（baseline仅25.42 vs foot 27.48, head 31.17, chest 30.58）
-||  - SPAGS在jaw上排名第2（+0.15dB），而在较简单的chest/head上几乎无增益
-||  - **确认了ADM收益与数据难度正相关的趋势**
-||  - corgs在jaw_3v上大幅领先（+0.39dB over spags），双高斯场+协同剪枝在难度数据上效果显著
+||  | fsgs | 35.4357 | 0.9482 | 🥉 |
+||- **分析**: corgs在foot_50_9views上表现最佳，PSNR和SSIM均领先。corgs优势在更多视角下更明显。
+|||- **状态**: ✅ keep
+|||- **下一步**: foot_50_9views_spags (测试ADM在9视角foot上的表现)
+||
+|||### 2026-04-28 12:00 | foot_50_9views_spags完成 — ADM在9视角foot上排名末位
+||||- **结果**: PSNR2D=35.3367, SSIM2D=0.9486
+||||- **foot_50_9views方法排名 (PSNR2D)**:
+||||  | 方法 | PSNR | SSIM | 排名 |
+||||  |-----|------|------|------|
+||||  | corgs | 35.5631 | 0.9552 | 🥇 |
+||||  | r2gaussian | 35.5573 | 0.9468 | 🥈 |
+||||  | xgaussian | 35.5301 | 0.9473 | 🥉 |
+||||  | dngaussian | 35.4420 | 0.9496 | 4 |
+||||  | fsgs | 35.4357 | 0.9482 | 5 |
+||||  | spags (ADM) | 35.3367 | 0.9486 | 6 |
+||||- **分析**: 与chest/head数据集的规律一致 — ADM在9视角下无优势。spags在foot_50_9views排名最后(-0.22dB vs corgs)
+||||- **核心发现再次确认**: ADM收益与视角数负相关，与数据难度正相关
+||||- **状态**: ✅ keep
+||||- **下一步**: 展开jaw/pancreas数据集的全方法比对实验（共6方法×6数据集=36实验）
+||||
+||||### 2026-04-28 12:00 | 实验矩阵扩展 — jaw/pancreas新数据集加入
+|||||- **背景**: 发现jaw/pancreas数据集可用, 实验矩阵从3器官扩展到5器官
+|||||- **新数据集**: jaw_50_3v/6v/9v, pancreas_50_3v/6v/9v (共6个新数据集)
+|||||- **total实验**: 90 (5器官×3视角×6方法)
+|||||- **已完成**: chest(18) + foot(18) + head(18) = 54 ✅
+|||||- **剩余**: jaw(18) + pancreas(18) = 36
+|||||- **jaw_50_3views_r2gaussian baseline**: PSNR2D=25.42, SSIM2D=0.8289 — 远低于其他数据集，jaw是最难的
+|||||- **下一步**: 依次运行jaw+pancreas上全部6方法（2 GPU并行）
+||||
+||||### 2026-04-28 12:13 | jaw_50_3views全方法比对完成 — SPAGS排名第二！
+|||||- **结果 (jaw_50_3views PSNR2D)**:
+|||||  | 方法 | PSNR | SSIM | 排名 | 备注 |
+|||||  |-----|------|------|------|------|
+|||||  | corgs | 25.8061 | 0.8586 | 🥇 | 大幅领先 |
+|||||  | spags (ADM) | 25.5676 | 0.8289 | 🥈 | +0.15dB over r2gaussian |
+|||||  | dngaussian | 25.5135 | 0.8293 | 🥉 | +0.10dB |
+|||||  | fsgs | 25.4330 | 0.8278 | 4 | +0.02dB |
+|||||  | r2gaussian | 25.4160 | 0.8289 | 5 | baseline |
+|||||  | xgaussian | 25.3936 | 0.8307 | 6 | -0.02dB |
+|||||- **关键分析**: 
+|||||  - jaw是迄今最难的数据集（baseline仅25.42 vs foot 27.48, head 31.17, chest 30.58）
+|||||  - SPAGS在jaw上排名第2（+0.15dB），而在较简单的chest/head上几乎无增益
+|||||  - **确认了ADM收益与数据难度正相关的趋势**
+|||||  - corgs在jaw_3v上大幅领先（+0.39dB over spags），双高斯场+协同剪枝在难度数据上效果显著
+|||||- **状态**: ✅ keep
+|||||- **下一步**: 继续jaw_50_6views/9views + pancreas全系实验
+|||||
+|||||### 2026-04-28 13:00 | 实验 #pancreas_50_3views — corgs最佳, dngaussian/xgaussian完成
+|||||- **背景**: 继续pancreas_50_3views全系比对实验（共6方法）
+|||||- **实验结果 (pancreas_50_3views, PSNR2D)**: 
+|||||  | 方法 | PSNR2D | SSIM2D | 排名 |
+|||||  |------|--------|--------|------|
+|||||  | corgs | 30.6705 | 0.9203 | 🥇 |
+|||||  | fsgs | 30.5869 | 0.9216 | 🥈 |
+|||||  | r2gaussian | 30.5702 | 0.9222 | 🥉 |
+|||||  | xgaussian | 30.3552 | 0.9157 | 4 |
+|||||  | dngaussian | 30.2906 | 0.9160 | 5 |
+|||||  | spags (ADM) | ❓ (running) | ❓ | ❓ |
+|||||- **分析**:
+|||||  - pancreas_3v: corgs最佳(30.67), 领先fsgs/r2gaussian约+0.1dB
+|||||  - dngaussian(30.29)和xgaussian(30.36)明显落后, 差异约-0.3dB
+|||||  - 深度约束(dngaussian)在pancreas上无效（0.000000), 与CT无深度图一致
+|||||  - 排名与jaw_3v相似: corgs稳居第一, r2gaussian/fsgs紧追
+|||||- **状态**: ✅ 3/6实验完成 (corgs/dngaussian/xgaussian已记录), spags正在跑
+|||- **下一步**: 完成pancreas_50_3views_spags后, 转向pancreas_50_6views全系
+||||
+||||### 2026-04-28 13:13 | pancreas_50_3views全系完成 + 6v baseline完成
+||||- **pancreas_50_3views排名 (PSNR2D)**: 
+||||  | 方法 | PSNR2D | SSIM2D | 排名 |
+||||  |------|--------|--------|------|
+||||  | corgs | 30.6705 | 0.9203 | 🥇 |
+||||  | fsgs | 30.5869 | 0.9216 | 🥈 |
+||||  | r2gaussian | 30.5702 | 0.9222 | 🥉 |
+||||  | xgaussian | 30.3552 | 0.9157 | 4 |
+||||  | spags (ADM) | 30.3181 | 0.9164 | 5 |
+||||  | dngaussian | 30.2906 | 0.9160 | 6 |
+||||- **关键发现**: SPAGS(ADM)在pancreas上**低于baseline**(-0.25dB), 确认ADM收益与数据难度正相关
+||||- **pancreas_50_6views_r2gaussian**: PSNR2D=33.9430 (6v baseline)
+||||- **已启动**: pancreas_50_6views_fsgs(GPU0) + corgs(GPU1)
+||||- **剩余**: pancreas(6v: f/c/d/x/s) + pancreas(9v全系) + jaw_9v_spags ≈ 15实验
+||||
+|||### 2026-04-28 14:04 | pancreas_50_6views_spags完成 — ADM在6v胰腺上排名末位
+||
+||- **结果**: PSNR2D=33.8756, SSIM2D=0.9499 (vs r2gaussian baseline 33.9430)
+||- **变化**: **-0.07dB** — ADM在胰腺6视角下略低于baseline
+||- **pancreas_50_6views排名 (PSNR2D)**:
+|  | 方法 | PSNR | SSIM | 排名 |
+|  |------|------|------|------|
+|  | corgs | 34.6100 | 0.9541 | 🥇 |
+|  | xgaussian | 34.2247 | 0.9535 | 🥈 |
+|  | dngaussian | 34.0960 | 0.9530 | 🥉 |
+|  | fsgs | 34.0824 | 0.9535 | 4 |
+|  | r2gaussian | 33.9430 | 0.9499 | 5 |
+|  | spags (ADM) | 33.8756 | 0.9499 | 6 |
+|- **分析**: ADM在胰腺6视角下排名最后，确认规律：高baseline高视角数时ADM为负收益
 |- **状态**: ✅ keep
-|- **下一步**: 继续jaw_50_6views/9views + pancreas全系实验
-|||
-|||### 2026-04-28 13:00 | 实验 #pancreas_50_3views — corgs最佳, dngaussian/xgaussian完成
-|||- **背景**: 继续pancreas_50_3views全系比对实验（共6方法）
-|||- **实验结果 (pancreas_50_3views, PSNR2D)**: 
-|||  | 方法 | PSNR2D | SSIM2D | 排名 |
-|||  |------|--------|--------|------|
-|||  | corgs | 30.6705 | 0.9203 | 🥇 |
-|||  | fsgs | 30.5869 | 0.9216 | 🥈 |
-|||  | r2gaussian | 30.5702 | 0.9222 | 🥉 |
-|||  | xgaussian | 30.3552 | 0.9157 | 4 |
-|||  | dngaussian | 30.2906 | 0.9160 | 5 |
-|||  | spags (ADM) | ❓ (running) | ❓ | ❓ |
-|||- **分析**:
-|||  - pancreas_3v: corgs最佳(30.67), 领先fsgs/r2gaussian约+0.1dB
-|||  - dngaussian(30.29)和xgaussian(30.36)明显落后, 差异约-0.3dB
-|||  - 深度约束(dngaussian)在pancreas上无效（0.000000), 与CT无深度图一致
-|||  - 排名与jaw_3v相似: corgs稳居第一, r2gaussian/fsgs紧追
-|||- **状态**: ✅ 3/6实验完成 (corgs/dngaussian/xgaussian已记录), spags正在跑
-|- **下一步**: 完成pancreas_50_3views_spags后, 转向pancreas_50_6views全系
-|||
-|||### 2026-04-28 13:13 | pancreas_50_3views全系完成 + 6v baseline完成
-|||- **pancreas_50_3views排名 (PSNR2D)**: 
-|||  | 方法 | PSNR2D | SSIM2D | 排名 |
-|||  |------|--------|--------|------|
-|||  | corgs | 30.6705 | 0.9203 | 🥇 |
-|||  | fsgs | 30.5869 | 0.9216 | 🥈 |
-|||  | r2gaussian | 30.5702 | 0.9222 | 🥉 |
-|||  | xgaussian | 30.3552 | 0.9157 | 4 |
-|||  | spags (ADM) | 30.3181 | 0.9164 | 5 |
-|||  | dngaussian | 30.2906 | 0.9160 | 6 |
-|||- **关键发现**: SPAGS(ADM)在pancreas上**低于baseline**(-0.25dB), 确认ADM收益与数据难度正相关
-|||- **pancreas_50_6views_r2gaussian**: PSNR2D=33.9430 (6v baseline)
-|||- **已启动**: pancreas_50_6views_fsgs(GPU0) + corgs(GPU1)
-|||- **剩余**: pancreas(6v: f/c/d/x/s) + pancreas(9v全系) + jaw_9v_spags ≈ 15实验
-|||
-### 2026-04-28 14:04 | pancreas_50_6views_spags完成 — ADM在6v胰腺上排名末位
+|- **下一步**: 继续 pancreas_50_9views_spags
 
-- **结果**: PSNR2D=33.8756, SSIM2D=0.9499 (vs r2gaussian baseline 33.9430)
-- **变化**: **-0.07dB** — ADM在胰腺6视角下略低于baseline
-- **pancreas_50_6views排名 (PSNR2D)**:
-  | 方法 | PSNR | SSIM | 排名 |
-  |------|------|------|------|
-  | corgs | 34.6100 | 0.9541 | 🥇 |
-  | xgaussian | 34.2247 | 0.9535 | 🥈 |
-  | dngaussian | 34.0960 | 0.9530 | 🥉 |
-  | fsgs | 34.0824 | 0.9535 | 4 |
-  | r2gaussian | 33.9430 | 0.9499 | 5 |
-  | spags (ADM) | 33.8756 | 0.9499 | 6 |
-- **分析**: ADM在胰腺6视角下排名最后，确认规律：高baseline高视角数时ADM为负收益
-- **状态**: ✅ keep
-- **下一步**: 继续 pancreas_50_9views_spags
+|### 2026-04-28 14:08 | pancreas_50_9views_spags完成 — ADM在9v胰腺上仍排名末位
+|
+|- **结果**: PSNR2D=35.5284, SSIM2D=0.9582 (vs r2gaussian 35.6753, corgs 35.9698)
+|- **变化**: **-0.15dB** vs r2gaussian baseline
+|- **pancreas_50_9views排名 (PSNR2D)**:
+|  | 方法 | PSNR | SSIM | 排名 |
+|  |------|------|------|------|
+|  | corgs | 35.9698 | 0.9626 | 🥇 |
+|  | xgaussian | 35.7708 | 0.9603 | 🥈 |
+|  | fsgs | 35.7136 | 0.9600 | 🥉 |
+|  | dngaussian | 35.7072 | 0.9609 | 4 |
+|  | r2gaussian | 35.6753 | 0.9599 | 5 |
+|  | spags (ADM) | 35.5284 | 0.9582 | 6 |
+|- **分析**: 完整确认：ADM在所有胰腺视角(3v/6v/9v)上均为负收益。baseline PSNR>30时ADM失效
+|- **状态**: ✅ keep
+|- **下一步**: 最后一个实验 jaw_50_9views_spags
 
-### 2026-04-28 14:08 | pancreas_50_9views_spags完成 — ADM在9v胰腺上仍排名末位
+|### 2026-04-28 14:11 | jaw_50_9views_spags完成 — ADM在9v下颌上排名末位
+|
+|- **结果**: PSNR2D=30.0970, SSIM2D=0.9109 (it2000=30.2013, it3000退化)
+|- **jaw_50_9views排名 (PSNR2D)**:
+|  | 方法 | PSNR | SSIM | 排名 |
+|  |------|:----:|:----:|:----:|
+|  | r2gaussian | 30.2624 | 0.9147 | 🥇 |
+|  | dngaussian | 30.2580 | 0.9145 | 🥈 |
+|  | xgaussian | 30.2478 | 0.9143 | 🥉 |
+|  | corgs | 30.2430 | 0.9197 | 4 |
+|  | fsgs | 30.1941 | 0.9145 | 5 |
+|  | spags (ADM) | 30.0970 | 0.9109 | 6 |
+|- **分析**: 有趣的是jaw_3v上SPAGS排名第二(+0.15dB)，但9v上反而垫底。ADM收益随视角数增加递减的规律在所有数据集上一致
+|- **关键发现**: ADM在几乎所有的6v/9v场景中排名末位(6/6)，仅在3v困难数据集上有正收益
+|- **状态**: ✅ keep
+|- **🎉 54实验全系比对完成！6方法×9数据集全部记录**
 
-- **结果**: PSNR2D=35.5284, SSIM2D=0.9582 (vs r2gaussian 35.6753, corgs 35.9698)
-- **变化**: **-0.15dB** vs r2gaussian baseline
-- **pancreas_50_9views排名 (PSNR2D)**:
-  | 方法 | PSNR | SSIM | 排名 |
-  |------|------|------|------|
-  | corgs | 35.9698 | 0.9626 | 🥇 |
-  | xgaussian | 35.7708 | 0.9603 | 🥈 |
-  | fsgs | 35.7136 | 0.9600 | 🥉 |
-  | dngaussian | 35.7072 | 0.9609 | 4 |
-  | r2gaussian | 35.6753 | 0.9599 | 5 |
-  | spags (ADM) | 35.5284 | 0.9582 | 6 |
-- **分析**: 完整确认：ADM在所有胰腺视角(3v/6v/9v)上均为负收益。baseline PSNR>30时ADM失效
-- **状态**: ✅ keep
-- **下一步**: 最后一个实验 jaw_50_9views_spags
+|### 2026-04-28 14:19 | 🎉 54实验全系比对完成！(6方法×9数据集)
+|
+|- **最后4个spags实验完成**:
+|  - chest_50_9views_spags: 34.9263 (-0.06dB vs r2gaussian 34.99) → 5/6
+|  - foot_50_6views_spags: 32.5836 (-0.15dB vs r2gaussian 32.73) → 6/6
+|  - head_50_6views_spags: 35.6073 (-0.06dB vs r2gaussian 35.67) → 6/6
+|  - head_50_9views_spags: 36.6068 (+0.02dB vs r2gaussian 36.58) → 2/6 🥈
+|
+|- **ADM (SPAGS) 在所有9个数据集上的视角维度表现**:
+|  | 数据集 | baseline@3v | ADM rank@3v | ADM rank@6v | ADM rank@9v |
+|  |-------|:---------:|:----------:|:----------:|:----------:|
+|  | foot | 27.48(难) | 6/6† | 6/6 | 6/6 |
+|  | jaw | 25.42(最难) | **2/6🥈** | 6/6 | 6/6 |
+|  | chest | 30.58(易) | 6/6 | 6/6 | 5/6 |
+|  | head | 31.17(很易) | 4/6 | 6/6 | **2/6🥈** |
+|  | pancreas | 30.57(易) | 5/6 | 6/6 | 6/6 |
+|  † foot_3v: ADM(N=1)实际最佳+2.35dB vs 旧N=2 baseline, 但新N=1基线待测
+|
+|- **核心结论**: 不存在"银弹"方法。方法排名完全取决于数据集和视角数。corgs在低视角(3v)多数据集上表现出色, fsgs在中等视角(6v)表现好, 9v时各方法差异缩小。
+|- **状态**: ✅ 全系完成
 
-### 2026-04-28 14:11 | jaw_50_9views_spags完成 — ADM在9v下颌上排名末位
+|### 2026-04-28 15:00 | 🔍 N=1公平对比 — foot_50_3views 真实验证结果颠覆认知
+|
+|- **背景**: 之前的实验将 foot_50_3views_r2gaussian (27.4827) 误作为N=1基线，但实际上27.4827是N=2旧基线值。method switch虽然将局部变量gaussiansN设为1，但saved cfg_args因argparse默认(gaussiansN=2)而显示N=2，造成混淆。需要真正的N=1公平对比。
+|
+|- **实验1: foot_N1_r2gaussian** (--method r2gaussian, N=1, no ADM)
+|  - PSNR2D=29.3939, SSIM2D=0.8906
+|  - **较旧N=2基线(27.48)提升+1.91dB** — N=1在foot数据集上远优于N=2
+|
+|- **实验2: foot_N1_adm64_rmx1.0** (--method spags, enable_adm, feat_dim=64, r_max=1.0)
+|  - PSNR2D=29.8822, SSIM2D=0.8870
+|  - ADM gain over N=1 baseline: **+0.49dB PSNR** (SSIM -0.0036)
+|  - 旧报告(+2.35dB)是错误对比N=2基线导致的
+|
+|- **修正后的foot_50_3views方法排名**:
+|  | 方法 | PSNR | SSIM | 排名 |
+|  |------|:----:|:----:|:----:|
+|  | corgs | 30.12 | 0.9048 | 🥇 |
+|  | spags (ADM N=1) | **29.88** | 0.8870 | 🥈 |
+|  | fsgs | 29.60 | 0.8931 | 🥉 |
+|  | xgaussian | 29.49 | 0.8866 | 4 |
+|  | dngaussian | 29.41/29.48 | 0.8892 | 5 |
+|  | r2gaussian (N=1) | 29.39 | 0.8906 | 6 |
+|
+|- **关键分析**:
+|  - ADM在foot_50_3views上确实有正收益(+0.49dB)，但远小于之前报告的+2.35dB
+|  - ADM排名第2(29.88)，仅落后corgs(30.12) 0.24dB — 差距不大
+|  - ADM超过fsgs(+0.28dB)和xgaussian(+0.39dB)，后者是更复杂的多视角方法
+|  - **SSIM下降**(-0.0036)表明ADM在结构保真度上略有折衷
+|  - 所有N=1方法(fsgs, xgaussian, dngaussian, r2gaussian)的PSNR集中在29.4-29.6范围，
+|    ADM(29.88)明显高出这一簇，corgs(30.12)则是真正的领先者
+|  - **结论更新**: ADM有效但仍逊于corgs的双高斯协同机制
+|
+|- **对之前结论的影响**:
+|  - "ADM收益与数据难度正相关" 结论仍成立但幅度缩小
+|  - foot_3v: ADM gain = +0.49dB (not +2.35dB)
+|  - jaw_3v: ADM gain = ~+0.15dB (基于N=1 r2gaussian 25.42, 需核实)
+|  - 需要检查其他3view数据集的r2gaussian是否也受到类似混淆
+|
+|- **状态**: ✅ keep (确认ADM有效但增益显著小于最初报告)
+|- **commit**: 待提交
 
-- **结果**: PSNR2D=30.0970, SSIM2D=0.9109 (it2000=30.2013, it3000退化)
-- **jaw_50_9views排名 (PSNR2D)**:
-  | 方法 | PSNR | SSIM | 排名 |
-  |------|------|------|------|
-  | r2gaussian | 30.2624 | 0.9147 | 🥇 |
-  | dngaussian | 30.2580 | 0.9145 | 🥈 |
-  | xgaussian | 30.2478 | 0.9143 | 🥉 |
-  | corgs | 30.2430 | 0.9197 | 4 |
-  | fsgs | 30.1941 | 0.9145 | 5 |
-  | spags (ADM) | 30.0970 | 0.9109 | 6 |
-- **分析**: 有趣的是jaw_3v上SPAGS排名第二(+0.15dB)，但9v上反而垫底。ADM收益随视角数增加递减的规律在所有数据集上一致
-- **关键发现**: ADM在几乎所有的6v/9v场景中排名末位(6/6)，仅在3v困难数据集上有正收益
-- **状态**: ✅ keep
-- **🎉 54实验全系比对完成！6方法×9数据集全部记录**
+|### 2026-04-28 16:00 | head N=1公平对比 — head_baseline同样存在N=2混淆!
+|
+|- **背景**: 15:00的foot N=1实验发现旧基线(27.48)实际为N=2。下一个检查目标是head_50_3views (旧基线31.17可能也是N=2，因为FSGS/dngaussian/xgaussian均获得~33dB，但旧r2gaussian仅31.17)
+|- **实验1: head_N1_r2gaussian** (--method r2gaussian, N=1)
+|  - PSNR2D=**32.7320**, SSIM2D=0.9314
+|  - **较旧N=2基线(31.17)提升+1.56dB** — 确认head_baseline=31.17也是N=2!
+|- **实验2: head_N1_adm64** (--method spags, adm_feat_dim=64, r_max=1.0, N=1)
+|  - PSNR2D=**32.7028**, SSIM2D=0.9330
+|  - ADM gain over N=1 baseline: **-0.03dB** (等效于零，ADM不带来增益)
+|- **修正后的head_50_3views方法排名**:
+|  | 方法 | PSNR | SSIM | 排名 | 备注 |
+|  |------|:----:|:----:|:----:|------|
+|  | corgs | 33.13 | 0.9391 | 🥇 | N=2 + coreg + coprune |
+|  | fsgs | 32.86 | 0.9376 | 🥈 | N=1 + pseudo views |
+|  | xgaussian | 32.99 | 0.9372 | 🥉 | N=1 + cross-view |
+|  | dngaussian | 33.08 | 0.9373 | 4 | N=1 + depth (CT无深度) |
+|  | r2gaussian (N=1) | **32.73** | 0.9314 | 5 | ✅ 新N=1基线 |
+|  | spags (ADM N=1) | **32.70** | 0.9330 | 6 | ADM无效 |
+|
+|- **关键分析**:
+|  - head N=1 r2gaussian (32.73) 仅略低于其他N=1方法(32.86-33.08), 差距0.13-0.35dB — 说明头部CT重建相对容易
+|  - ADM在head上无效(-0.03dB), 符合"baseline PSNR>30时ADM无收益"的规律
+|  - 旧报告"ADM on head +0.14dB"是基于错误N=2对比, 修正后为零增益
+|- **对之前结论的影响**:
+|  - "ADM仅对3view困难数据有效" 结论仍然成立, 但有效门槛提高: 仅baseline PSNR<30
+|  - foot_3v: ADM gain = +0.49dB (唯一显著正收益数据集)
+|  - jaw_3v: ADM gain ≈ +0.15dB (基于N=1 r2gaussian 25.42)
+|  - 其他所有3v+数据集 ADM 无增益或负收益
+|- **下一步**: 全数据集N=1基线均已修正 (foot=29.39, head=32.73); 其他数据集(chest/jaw/pancreas)的r2gaussian是方法开关跑的, 已是N=1
 
-### 2026-04-28 14:19 | 🎉 54实验全系比对完成！(6方法×9数据集)
-
-- **最后4个spags实验完成**:
-  - chest_50_9views_spags: 34.9263 (-0.06dB vs r2gaussian 34.99) → 5/6
-  - foot_50_6views_spags: 32.5836 (-0.15dB vs r2gaussian 32.73) → 6/6
-  - head_50_6views_spags: 35.6073 (-0.06dB vs r2gaussian 35.67) → 6/6
-  - head_50_9views_spags: 36.6068 (+0.02dB vs r2gaussian 36.58) → 2/6 🥈
-
-- **ADM (SPAGS) 在所有9个数据集上的视角维度表现**:
-  | 数据集 | baseline@3v | ADM rank@3v | ADM rank@6v | ADM rank@9v |
-  |-------|:---------:|:----------:|:----------:|:----------:|
-  | foot | 27.48(难) | 6/6† | 6/6 | 6/6 |
-  | jaw | 25.42(最难) | **2/6🥈** | 6/6 | 6/6 |
-  | chest | 30.58(易) | 6/6 | 6/6 | 5/6 |
-  | head | 31.17(很易) | 4/6 | 6/6 | **2/6🥈** |
-  | pancreas | 30.57(易) | 5/6 | 6/6 | 6/6 |
-  † foot_3v: ADM(N=1)实际最佳+2.35dB vs 旧N=2 baseline, 但新N=1基线待测
-
-- **核心结论**: 不存在"银弹"方法。方法排名完全取决于数据集和视角数。corgs在低视角(3v)多数据集上表现出色, fsgs在中等视角(6v)表现好, 9v时各方法差异缩小。
-- **状态**: ✅ 全系完成
-
-### 2026-04-28 15:00 | 🔍 N=1公平对比 — foot_50_3views 真实验证结果颠覆认知
-
-- **背景**: 之前的实验将 foot_50_3views_r2gaussian (27.4827) 误作为N=1基线，但实际上27.4827是N=2旧基线值。method switch虽然将局部变量gaussiansN设为1，但saved cfg_args因argparse默认(gaussiansN=2)而显示N=2，造成混淆。需要真正的N=1公平对比。
-
-- **实验1: foot_N1_r2gaussian** (--method r2gaussian, N=1, no ADM)
-  - PSNR2D=29.3939, SSIM2D=0.8906
-  - **较旧N=2基线(27.48)提升+1.91dB** — N=1在foot数据集上远优于N=2
-
-- **实验2: foot_N1_adm64_rmx1.0** (--method spags, enable_adm, feat_dim=64, r_max=1.0)
-  - PSNR2D=29.8822, SSIM2D=0.8870
-  - ADM gain over N=1 baseline: **+0.49dB PSNR** (SSIM -0.0036)
-  - 旧报告(+2.35dB)是错误对比N=2基线导致的
-
-- **修正后的foot_50_3views方法排名**:
-  | 方法 | PSNR | SSIM | 排名 |
-  |------|:----:|:----:|:----:|
-  | corgs | 30.12 | 0.9048 | 🥇 |
-  | spags (ADM N=1) | **29.88** | 0.8870 | 🥈 |
-  | fsgs | 29.60 | 0.8931 | 🥉 |
-  | xgaussian | 29.49 | 0.8866 | 4 |
-  | dngaussian | 29.41/29.48 | 0.8892 | 5 |
-  | r2gaussian (N=1) | 29.39 | 0.8906 | 6 |
-
-- **关键分析**:
-  - ADM在foot_50_3views上确实有正收益(+0.49dB)，但远小于之前报告的+2.35dB
-  - ADM排名第2(29.88)，仅落后corgs(30.12) 0.24dB — 差距不大
-  - ADM超过fsgs(+0.28dB)和xgaussian(+0.39dB)，后者是更复杂的多视角方法
-  - **SSIM下降**(-0.0036)表明ADM在结构保真度上略有折衷
-  - 所有N=1方法(fsgs, xgaussian, dngaussian, r2gaussian)的PSNR集中在29.4-29.6范围，
-    ADM(29.88)明显高出这一簇，corgs(30.12)则是真正的领先者
-  - **结论更新**: ADM有效但仍逊于corgs的双高斯协同机制
-
-- **对之前结论的影响**:
-  - "ADM收益与数据难度正相关" 结论仍成立但幅度缩小
-  - foot_3v: ADM gain = +0.49dB (not +2.35dB)
-  - jaw_3v: ADM gain = ~+0.15dB (基于N=1 r2gaussian 25.42, 需核实)
-  - 需要检查其他3view数据集的r2gaussian是否也受到类似混淆
-
-- **状态**: ✅ keep (确认ADM有效但增益显著小于最初报告)
-- **commit**: 待提交
-
-### 2026-04-28 16:00 | head N=1公平对比 — head_baseline同样存在N=2混淆!
-
-- **背景**: 15:00的foot N=1实验发现旧基线(27.48)实际为N=2。下一个检查目标是head_50_3views (旧基线31.17可能也是N=2，因为FSGS/dngaussian/xgaussian均获得~33dB，但旧r2gaussian仅31.17)
-- **实验1: head_N1_r2gaussian** (--method r2gaussian, N=1)
-  - PSNR2D=**32.7320**, SSIM2D=0.9314
-  - **较旧N=2基线(31.17)提升+1.56dB** — 确认head_baseline=31.17也是N=2!
-- **实验2: head_N1_adm64** (--method spags, adm_feat_dim=64, r_max=1.0, N=1)
-  - PSNR2D=**32.7028**, SSIM2D=0.9330
-  - ADM gain over N=1 baseline: **-0.03dB** (等效于零，ADM不带来增益)
-- **修正后的head_50_3views方法排名**:
-  | 方法 | PSNR | SSIM | 排名 | 备注 |
-  |------|:----:|:----:|:----:|------|
-  | corgs | 33.13 | 0.9391 | 🥇 | N=2 + coreg + coprune |
-  | fsgs | 32.86 | 0.9376 | 🥈 | N=1 + pseudo views |
-  | xgaussian | 32.99 | 0.9372 | 🥉 | N=1 + cross-view |
-  | dngaussian | 33.08 | 0.9373 | 4 | N=1 + depth (CT无深度) |
-  | r2gaussian (N=1) | **32.73** | 0.9314 | 5 | ✅ 新N=1基线 |
-  | spags (ADM N=1) | **32.70** | 0.9330 | 6 | ADM无效 |
-
-- **关键分析**:
-  - head N=1 r2gaussian (32.73) 仅略低于其他N=1方法(32.86-33.08), 差距0.13-0.35dB — 说明头部CT重建相对容易
-  - ADM在head上无效(-0.03dB), 符合"baseline PSNR>30时ADM无收益"的规律
-  - 旧报告"ADM on head +0.14dB"是基于错误N=2对比, 修正后为零增益
-- **对之前结论的影响**:
-  - "ADM仅对3view困难数据有效" 结论仍然成立, 但有效门槛提高: 仅baseline PSNR<30
-  - foot_3v: ADM gain = +0.49dB (唯一显著正收益数据集)
-  - jaw_3v: ADM gain ≈ +0.15dB (基于N=1 r2gaussian 25.42)
-  - 其他所有3v+数据集 ADM 无增益或负收益
-- **下一步**: 全数据集N=1基线均已修正 (foot=29.39, head=32.73); 其他数据集(chest/jaw/pancreas)的r2gaussian是方法开关跑的, 已是N=1
+### 2026-04-28 17:00 | foot_N1_adm128 — N=1上feat_dim=128反而更差(负收益)
+- **背景**: ADM feat_dim=128仅在N=2上测试过(PSNR=29.00, 比feat64 28.90+0.10dB), N=1模式下需验证是否同样受益
+- **参数**: feat_dim=128, r_max=1.0, tv_weight=0.002, N=1, foot_50_3views
+- **结果**: PSNR2D=29.8322, SSIM2D=0.8818
+  - vs N=1 r2gaussian baseline (29.39): +0.44dB
+  - vs N=1 ADM feat64 (29.88): **-0.05dB** — feat128反而更差!
+- **PSNR轨迹**: it1000=30.10 → it2000=29.99 → it3000=29.83 (📉 持续下降, 过拟合)
+- **分析**: 
+  - N=1模式下特征容量收益规律与N=2完全相反
+  - PSNR在1000it达到峰值(30.10)后持续下降, 更大特征维度导致过拟合
+  - **结论**: feat_dim=64是N=1最优, 更大维度反而有害
+- **原因推测**: N=1单高斯场参数空间更简单, ADM学到的特征噪声干扰优化
+- **状态**: ✅ keep (重要负结果: N=1特征容量瓶颈)
+- **commit**: fd803db
+- **下一步方向**:
+  1. TV loss在梯度修复后行为未知 → 建议测试 tv_weight=0.0
+  2. 测试 jaw_N1_adm64 以确认最大增益潜力
+  3. 探索 ADM+GAR 组合在 N=1 上的性能
