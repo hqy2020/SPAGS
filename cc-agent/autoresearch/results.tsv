@@ -16,3 +16,4 @@ e515ac4	head_adm64_001	head_50_3views	31.3164	0.9164	64	1.0	0.002	256	keep	ADM o
 4ebafa4	fsgs_prox_th4	foot_50_3views	27.9608	0.8229	-	-	-	-	keep	FSGS Prox th=4: PSNR=27.96, SSIM=0.8229 (best SSIM)
 4ebafa4	fsgs_prox_th8	foot_50_3views	27.9573	0.8214	-	-	-	-	keep	FSGS Prox th=8: PSNR=27.96, SSIM=0.8214 (similar to th=6)
 4ebafa4	fsgs_prox_th10	foot_50_3views	27.9746	0.8225	-	-	-	-	keep	FSGS Prox th=10: PSNR=27.97, SSIM=0.8225 (similar to th=6)
+7b91bbf	adm_feat64_coprune_v2	foot_50_3views	28.9316	0.8172	64	1.0	0.002	256	keep	Co-pruning(CoR-GS) th=5: iter3000 PSNR=28.93 regressed from iter2000=29.25 (over-pruning at late stage)

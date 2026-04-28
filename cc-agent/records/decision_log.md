@@ -89,6 +89,17 @@ YYYY-MM-DD HH:MM | exp-<name> | PSNR=XX.XXXX/SSIM=XX.XXXX | 参数: ... | 状态
   - 每500次迭代检查
   - 对场i中每个高斯，计算到场j的最近邻距离
   - 距离 > coprune_threshold (默认5) 则剪除
-  - 使用 distCUDA2 计算全对跨场距离
-- **提交**: 5e235b5
-- **实验状态**: adm_feat64_coprune 正在GPU0运行中...
+  - 使用分块 torch.cdist (2000×10000) 避免OOM
+- **提交**: 5e235b5 → 79d5b34(fix distCUDA2) → 7b91bbf(fix chunk size)
+- **v1失败**: distCUDA2 返回1D最近邻距离而非(N,N)全对距离，导致OOM崩溃 (PSNR=16.69初始化后崩溃)
+- **v2修复**: 使用分块 torch.cdist，chunk_size_i=2000, chunk_size_j=10000
+- **v2结果 th=5**: 
+  - iter_1000: PSNR=28.332, SSIM=0.8277 (ADM-only @it1000: ~28.1)
+  - iter_2000: PSNR=29.250, SSIM=0.8368 (🔥 最高纪录! +0.35 PSNR, +0.014 SSIM over ADM-only)
+  - iter_3000: PSNR=28.932, SSIM=0.8172 (⚠️ 回归: 3000it时性能下降)
+- **分析**: 
+  - ✅ Co-pruning 在2000it达到最佳(29.25)，证明ADM+CoR-GS互补有效
+  - ⚠️ 但3000it出现回归，说明 th=5 在后期过度剪枝
+  - SSIM在2000it时高达0.8368(远超ADM-only 0.8227)，但3000it回退到0.8172
+- **状态**: ✅ keep (证实co-pruning潜力，但需调优阈值)
+- **下一步**: 阈值扫描 th=3(温和) vs th=7(严格)，寻找最优阈值

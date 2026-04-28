@@ -100,9 +100,9 @@ def training(
     saving_iterations,
     checkpoint_iterations,
     checkpoint,
-    gaussiansN=2,
-    coreg=True,
-    coprune=True,
+    gaussiansN=1,
+    coreg=False,
+    coprune=False,
     coprune_threshold=5,
     args=None,
 ):
@@ -110,6 +110,70 @@ def training(
     训练主循环，负责高斯模型的初始化、损失计算、反向传播、稠密化与剪枝、保存模型和断点，以及日志记录。
     """
     first_iter = 0
+
+    # 🔄 根据 method 参数配置对比方法
+    method = getattr(args, 'method', 'spags') if args else 'spags'
+    if method == 'r2gaussian':
+        gaussiansN = 1
+        coreg = False
+        coprune = False
+        dataset.multi_gaussian = False
+        dataset.pseudo_labels = False
+        dataset.enable_fsgs_proximity = False
+        dataset.enable_adm = False
+        print("="*60)
+        print("🔬 Method: R²-Gaussian (NeurIPS'24) — Pure baseline")
+        print("="*60)
+    elif method == 'corgs':
+        gaussiansN = 2
+        coreg = True
+        coprune = True
+        dataset.enable_adm = False
+        dataset.enable_fsgs_proximity = False
+        print("="*60)
+        print("🔬 Method: CoR-GS (ECCV'24) — Co-regularization")
+        print("="*60)
+    elif method == 'fsgs':
+        gaussiansN = 1
+        coreg = False
+        coprune = False
+        dataset.enable_fsgs_proximity = True
+        dataset.multi_gaussian = True
+        dataset.pseudo_labels = True
+        dataset.enable_adm = False
+        print("="*60)
+        print("🔬 Method: FSGS (ECCV'24) — Few-Shot Gaussian Splatting")
+        print("="*60)
+    elif method == 'dngaussian':
+        gaussiansN = 1
+        coreg = False
+        coprune = False
+        dataset.enable_adm = False
+        dataset.enable_fsgs_proximity = False
+        dataset.enable_depth = True
+        dataset.depth_loss_weight = 0.04
+        print("="*60)
+        print("🔬 Method: DN-Gaussian (CVPR'24) — Depth-Guided Gaussian Splatting")
+        print("="*60)
+    elif method == 'xgaussian':
+        gaussiansN = 1
+        coreg = False
+        coprune = False
+        dataset.enable_adm = False
+        dataset.enable_fsgs_proximity = False
+        print("="*60)
+        print("🔬 Method: X-Gaussian (ECCV'24) — Cross-view Gaussian")
+        print("="*60)
+    else:  # spags (default)
+        gaussiansN = 1
+        coreg = False
+        coprune = False
+        dataset.multi_gaussian = False
+        dataset.pseudo_labels = False
+        dataset.enable_adm = True
+        print("="*60)
+        print("🔬 Method: SPAGS (本文) — Spatial-aware Progressive Adaptive GS")
+        print("="*60)
 
     # 初始化数据集场景
     scene = Scene(dataset, shuffle=False)
@@ -1304,6 +1368,11 @@ if __name__ == "__main__":
     
     # FSGS Proximity-Guided Densification 参数在arguments/__init__.py中已定义
     
+    # 🔄 对比方法选择
+    parser.add_argument("--method", type=str, default="spags", 
+                        choices=["r2gaussian", "corgs", "fsgs", "dngaussian", "xgaussian", "spags"],
+                        help="选择运行的方法: r2gaussian / corgs / fsgs / dngaussian / xgaussian / spags")
+    
     # 旧版本 Proximity-Guided Densification 参数 (兼容性保留)
     parser.add_argument("--enable_proximity_guided", action="store_true", default=False)  # 是否启用旧版proximity-guided密化
     parser.add_argument("--proximity_interval", type=int, default=1000)  # proximity密化间隔
@@ -1332,7 +1401,7 @@ if __name__ == "__main__":
 
     # 是否开启异常检测
     torch.autograd.set_detect_anomaly(args.detect_anomaly)
-    # 启动训练主循环
+    # 启动训练主循环（方法配置通过 args.method 自动设置）
     training(
         lp.extract(args),
         op.extract(args),
@@ -1342,11 +1411,11 @@ if __name__ == "__main__":
         args.save_iterations,
         args.checkpoint_iterations,
         args.start_checkpoint,
-        args.gaussiansN,
-        args.coreg,
-        args.coprune,
-        args.coprune_threshold,
-        args,
+        gaussiansN=1,
+        coreg=False,
+        coprune=False,
+        coprune_threshold=5,
+        args=args,
     )
     
     # 注意：在训练过程中使用 render 函数时，需要传递 enable_drop=args.enable_drop 参数
