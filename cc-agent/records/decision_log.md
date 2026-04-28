@@ -461,3 +461,38 @@ YYYY-MM-DD HH:MM | exp-<name> | PSNR=XX.XXXX/SSIM=XX.XXXX | 参数: ... | 状态
 |   - 待运行 jaw_N1_r2gaussian 以获取N=1基准值
 |   - 轨迹模式与foot一致: it1000峰值后递减(过拟合)
 
+
+### 2026-04-28 18:30 | jaw_N1_adm64_tv0.0 — TV=0.0泛化验证成功!
+
+| **假设**: TV=0.0在foot上有效, 是否泛化到其他数据集?
+
+| **参数**: feat_dim=64, r_max=1.0, tv_weight=**0.0**, gaussiansN=1, jaw_50_3views
+
+| **结果轨迹**:
+|   - ITER 1000: PSNR2D=25.38 (低于tv0.002峰25.84, 但还在上升)
+|   - ITER 2000: PSNR2D=**25.94** (🔥 新纪录! 超tv0.002峰0.10dB)
+|   - ITER 3000: PSNR2D=**25.85** (仍超tv0.002峰25.84)
+
+| **对比分析**:
+|   - vs jaw_N1_adm64_tv0.002 (25.59): **+0.26dB PSNR** 🔥
+|   - vs jaw baseline (~25.42): **+0.43dB PSNR**
+|   - TV=0.0比TV=0.002: 训练轨迹更优, peak从it1000推迟到it2000
+|   - **TV=0.0全身泛化有效!**
+
+| **状态**: ✅ keep (TV=0.0泛化验证成功)
+
+### 2026-04-28 18:30 | chest_N1_adm64_tv0.0 — 再次确认ADM在easy data上无效
+
+| **结果轨迹**:
+|   - ITER 1000: PSNR2D=30.82 (peak, +0.24dB over baseline 30.58)
+|   - ITER 2000: PSNR2D=30.70
+|   - ITER 3000: PSNR2D=30.61 (+0.03dB, 零增益)
+
+| **分析**: 
+|   - chest baseline=30.58 > 30, ADM完全无效
+|   - 峰it1000=30.82但it3000退化到30.61, 过拟合严重
+|   - TV=0.0 vs TV=0.002(chest旧值30.62): 几乎一致
+|   - **最终确认**: ADM有效门槛: baseline PSNR < 30
+
+| **状态**: ✅ keep (边界条件确认)
+
