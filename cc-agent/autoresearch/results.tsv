@@ -18,3 +18,8 @@
     18|4ebafa4	fsgs_prox_th10	foot_50_3views	27.9746	0.8225	-	-	-	-	keep	FSGS Prox th=10: PSNR=27.97, SSIM=0.8225 (similar to th=6)
     19|7b91bbf	adm_feat64_coprune_v2	foot_50_3views	28.9316	0.8172	64	1.0	0.002	256	keep	Co-pruning(CoR-GS) th=5: 3000it回归(28.93/0.8172), 但2000it峰值29.25/0.8368(最高纪录+0.35dB/+0.014SSIM), 需调优
     20|2026-04-28 09:05	chest_r2gaussian	30.5821	0.9117	22.8915	0.6248	method=r2gaussian,dataset=chest_50_3views	keep
+2026-04-28 09:00	foot_50_3views_r2gaussian	27.4827	0.8211	27.4827	0.8211	foot_50_3views	r2gaussian
+2026-04-28 09:00	foot_50_3views_spags	28.9034	0.8227	28.9034	0.8227	foot_50_3views	spags(feat64)
+2026-04-28 09:00	head_50_3views_r2gaussian	31.1727	0.9177	31.1727	0.9177	head_50_3views	r2gaussian
+2026-04-28 09:00	head_50_3views_spags	31.3164	0.9164	31.3164	0.9164	head_50_3views	spags(feat64)
+2026-04-28 09:05	chest_50_3views_r2gaussian	30.5821	0.9117	22.8915	0.6248	chest_50_3views	r2gaussian
