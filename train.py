@@ -950,16 +950,20 @@ def training(
                                 if xyz_i.shape[0] == 0 or xyz_j.shape[0] == 0:
                                     continue
                                 # 分块计算跨场最近邻距离 (避免OOM)
-                                chunk_size = 50000
+                                chunk_size = 2000  # 对场i分块, 每块2000个点
+                                chunk_size_j = 10000  # 对场j分块, 每块10000个点
                                 min_cross_dist = torch.full((xyz_i.shape[0],), float('inf'), device='cuda')
-                                for start in range(0, xyz_j.shape[0], chunk_size):
-                                    end = min(start + chunk_size, xyz_j.shape[0])
-                                    j_chunk = xyz_j[start:end]
-                                    # (N_i, 3) - (1, chunk, 3) -> (N_i, chunk)
-                                    diff = xyz_i[:, None, :] - j_chunk[None, :, :]
-                                    dist_chunk = torch.norm(diff, dim=2)
-                                    chunk_min, _ = dist_chunk.min(dim=1)
-                                    min_cross_dist = torch.min(min_cross_dist, chunk_min)
+                                for i_start in range(0, xyz_i.shape[0], chunk_size):
+                                    i_end = min(i_start + chunk_size, xyz_i.shape[0])
+                                    i_chunk = xyz_i[i_start:i_end]
+                                    chunk_min = torch.full((i_end - i_start,), float('inf'), device='cuda')
+                                    for j_start in range(0, xyz_j.shape[0], chunk_size_j):
+                                        j_end = min(j_start + chunk_size_j, xyz_j.shape[0])
+                                        j_chunk = xyz_j[j_start:j_end]
+                                        dist_chunk = torch.cdist(i_chunk, j_chunk)  # (c_i, c_j)
+                                        cj_min, _ = dist_chunk.min(dim=1)  # (c_i,)
+                                        chunk_min = torch.min(chunk_min, cj_min)
+                                    min_cross_dist[i_start:i_end] = chunk_min
                                 # mask = True 表示该点需要被剪除
                                 prune_mask = (min_cross_dist > coprune_threshold) & torch.isfinite(min_cross_dist)
                                 n_prune = prune_mask.sum().item()
