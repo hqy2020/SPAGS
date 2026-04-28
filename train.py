@@ -942,7 +942,6 @@ def training(
             # 若到另一场最近邻的距离 > coprune_threshold, 则剪除该点
             if coprune and gaussiansN > 1 and iteration < opt.densify_until_iter:
                 if iteration % 500 == 0:
-                    from simple_knn._C import distCUDA2
                     for i in range(gaussiansN):
                         for j in range(gaussiansN):
                             if i != j:
@@ -950,18 +949,17 @@ def training(
                                 xyz_j = GsDict[f"gs{j}"].get_xyz.detach()
                                 if xyz_i.shape[0] == 0 or xyz_j.shape[0] == 0:
                                     continue
-                                # 拼接两个点云计算全对距离
-                                concat_xyz = torch.cat([xyz_i, xyz_j], dim=0)
-                                dist_mat = distCUDA2(concat_xyz)  # (N_i+N_j, N_i+N_j), 每行已排序
-                                # 提取 i→j 的跨场距离 (第一个大于0的距离即为到j的最近邻)
-                                # dist_mat 每行已排序, 前 N_i 列是到场内点的距离
-                                # 对场i的点, 到场j的最近邻是跨 N_i 边界后的第一个
-                                n_i = xyz_i.shape[0]
-                                # 从距离矩阵中取跨场部分: 每行中第 n_i 列开始是属于场j的点
-                                # 由于已排序, 跨场最近距离 = 第 n_i 个元素 (如果场内有点数>=n_i+1)
-                                # 更稳健: 取从 n_i 开始的列的最小值
-                                cross_dist = dist_mat[:n_i, n_i:]  # (N_i, N_j)
-                                min_cross_dist, _ = cross_dist.min(dim=1)  # (N_i,)
+                                # 分块计算跨场最近邻距离 (避免OOM)
+                                chunk_size = 50000
+                                min_cross_dist = torch.full((xyz_i.shape[0],), float('inf'), device='cuda')
+                                for start in range(0, xyz_j.shape[0], chunk_size):
+                                    end = min(start + chunk_size, xyz_j.shape[0])
+                                    j_chunk = xyz_j[start:end]
+                                    # (N_i, 3) - (1, chunk, 3) -> (N_i, chunk)
+                                    diff = xyz_i[:, None, :] - j_chunk[None, :, :]
+                                    dist_chunk = torch.norm(diff, dim=2)
+                                    chunk_min, _ = dist_chunk.min(dim=1)
+                                    min_cross_dist = torch.min(min_cross_dist, chunk_min)
                                 # mask = True 表示该点需要被剪除
                                 prune_mask = (min_cross_dist > coprune_threshold) & torch.isfinite(min_cross_dist)
                                 n_prune = prune_mask.sum().item()

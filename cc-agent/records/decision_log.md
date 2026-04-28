@@ -69,3 +69,26 @@ YYYY-MM-DD HH:MM | exp-<name> | PSNR=XX.XXXX/SSIM=XX.XXXX | 参数: ... | 状态
 - **分析**: 在head上的改善(+0.14dB)远小于foot(+1.42dB)。原因：1) head baseline PSNR已很高(31.17)，天花板效应；2) 头部结构更简单，ADM空间调制的边际收益降低
 - **决策**: ✅ keep (确认ADM在不同数据集上有效但增益依赖于数据难度)
 - **关键发现**: ADM对困难数据(低baseline)效果显著，对简单数据增益有限
+
+### 2026-04-28 08:00 | 实验 #9-12: FSGS Proximity 阈值扫描
+- **假设**: proximity_threshold 对FSGS Proximity standalone结果有显著影响
+- **实验**: 在 foot_50_3views 上扫描4个阈值 (4, 6, 8, 10)
+- **结果**:
+  - th=4: PSNR=27.9608, SSIM=0.8229
+  - th=6: PSNR=27.9834, SSIM=0.8217
+  - th=8: PSNR=27.9573, SSIM=0.8214
+  - th=10: PSNR=27.9746, SSIM=0.8225
+- **变化**: 所有阈值均稳定提升 baseline (+0.47~+0.50 dB)，但阈值间差异极小 (<0.03 dB)
+- **分析**: FSGS Proximity standalone对阈值不敏感，th=4-10范围结果一致。均低于ADM feat64 (28.90, +1.42dB)。FSGS速度优势(17it/s) vs ADM(3it/s)，但PSNR提升仅ADM的1/3
+- **决策**: ✅ all keep
+- **下一步**: 转向Co-pruning (CoR-GS) 实现，预期与ADM互补提升SSIM
+
+### 2026-04-28 08:00 | 实验 #13: Co-pruning 实现
+- **背景**: CoR-GS (ECCV 2024) 协同剪枝：双高斯场KNN距离剪枝。原代码中 `coprune` 参数存在但从未被使用
+- **实现**: 在 train.py 密化步骤后插入协同剪枝逻辑：
+  - 每500次迭代检查
+  - 对场i中每个高斯，计算到场j的最近邻距离
+  - 距离 > coprune_threshold (默认5) 则剪除
+  - 使用 distCUDA2 计算全对跨场距离
+- **提交**: 5e235b5
+- **实验状态**: adm_feat64_coprune 正在GPU0运行中...
