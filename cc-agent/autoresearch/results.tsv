@@ -133,5 +133,5 @@ new	25	v2	foot_N1_r2gaussian	foot_50_3views	29.3939	0.8906	-	-	-	-	keep	True N=1
 new	26	v2	foot_N1_adm64_rmx1.0	foot_50_3views	29.8822	0.8870	64	1.0	0.002	256	keep	True N=1 ADM feat64 rmax1.0 (--method spags --enable_adm --adm_feat_dim 64 --adm_r_max 1.0)
 
 # === 2026-04-28 16:00 head N=1实验 ===
-new	commit_to_add	head_N1_r2gaussian	head_50_3views	32.7320	0.9314	-	-	-	-	keep	True N=1 r2gaussian baseline for head (旧head_baseline=31.17实际为N=2基线, N=1真实值=32.73, +1.56dB)
-new	commit_to_add	head_N1_adm64	head_50_3views	32.7028	0.9330	64	1.0	0.002	256	keep	True N=1 ADM feat64 rmax1.0 on head (vs N=1 baseline 32.73): -0.03dB — ADM对高基线数据集无收益
+af2a203\thead_N1_r2gaussian	head_50_3views	32.7320	0.9314	-	-	-	-	keep	True N=1 r2gaussian baseline for head (旧head_baseline=31.17实际为N=2基线, N=1真实值=32.73, +1.56dB)
+af2a203\thead_N1_adm64	head_50_3views	32.7028	0.9330	64	1.0	0.002	256	keep	True N=1 ADM feat64 rmax1.0 on head (vs N=1 baseline 32.73): -0.03dB — ADM对高基线数据集无收益
