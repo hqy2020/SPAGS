@@ -103,3 +103,15 @@ YYYY-MM-DD HH:MM | exp-<name> | PSNR=XX.XXXX/SSIM=XX.XXXX | 参数: ... | 状态
   - SSIM在2000it时高达0.8368(远超ADM-only 0.8227)，但3000it回退到0.8172
 - **状态**: ✅ keep (证实co-pruning潜力，但需调优阈值)
 - **下一步**: 阈值扫描 th=3(温和) vs th=7(严格)，寻找最优阈值
+
+### 2026-04-28 09:05 | 空间感知层次框架确立
+- **背景**: 用户要求从"空间感知"出发自主研究 ADM/GAR/SPS
+- **核心框架**: 层次化空间感知 (Hierarchical Spatial Awareness)
+  - **SPS** (场景级): 深度归一化 → 全局3D结构理解
+  - **GAR** (局部级): 邻近密化 → 几何感知的高斯分布精化
+  - **ADM** (高斯级): 三平面特征网络 → 逐点密度调制
+- **关键发现**: CT投影数据不含深度图，DN-Gaussian深度损失无法直接应用
+- **Cron Job**: 已建立 `SPAGS每小时空间感知研究` (0 * * * *)
+  - 每次只跑一个实验，自动记录、commit、push
+  - 9个实验队列：单模块验证 → 两两组合 → 三合一 → 跨数据集
+- **GitHub**: 已推送至 `autoresearch/adm-gradfix` 分支
