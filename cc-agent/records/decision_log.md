@@ -331,3 +331,44 @@ YYYY-MM-DD HH:MM | exp-<name> | PSNR=XX.XXXX/SSIM=XX.XXXX | 参数: ... | 状态
 
 - **核心结论**: 不存在"银弹"方法。方法排名完全取决于数据集和视角数。corgs在低视角(3v)多数据集上表现出色, fsgs在中等视角(6v)表现好, 9v时各方法差异缩小。
 - **状态**: ✅ 全系完成
+
+### 2026-04-28 15:00 | 🔍 N=1公平对比 — foot_50_3views 真实验证结果颠覆认知
+
+- **背景**: 之前的实验将 foot_50_3views_r2gaussian (27.4827) 误作为N=1基线，但实际上27.4827是N=2旧基线值。method switch虽然将局部变量gaussiansN设为1，但saved cfg_args因argparse默认(gaussiansN=2)而显示N=2，造成混淆。需要真正的N=1公平对比。
+
+- **实验1: foot_N1_r2gaussian** (--method r2gaussian, N=1, no ADM)
+  - PSNR2D=29.3939, SSIM2D=0.8906
+  - **较旧N=2基线(27.48)提升+1.91dB** — N=1在foot数据集上远优于N=2
+
+- **实验2: foot_N1_adm64_rmx1.0** (--method spags, enable_adm, feat_dim=64, r_max=1.0)
+  - PSNR2D=29.8822, SSIM2D=0.8870
+  - ADM gain over N=1 baseline: **+0.49dB PSNR** (SSIM -0.0036)
+  - 旧报告(+2.35dB)是错误对比N=2基线导致的
+
+- **修正后的foot_50_3views方法排名**:
+  | 方法 | PSNR | SSIM | 排名 |
+  |------|:----:|:----:|:----:|
+  | corgs | 30.12 | 0.9048 | 🥇 |
+  | spags (ADM N=1) | **29.88** | 0.8870 | 🥈 |
+  | fsgs | 29.60 | 0.8931 | 🥉 |
+  | xgaussian | 29.49 | 0.8866 | 4 |
+  | dngaussian | 29.41/29.48 | 0.8892 | 5 |
+  | r2gaussian (N=1) | 29.39 | 0.8906 | 6 |
+
+- **关键分析**:
+  - ADM在foot_50_3views上确实有正收益(+0.49dB)，但远小于之前报告的+2.35dB
+  - ADM排名第2(29.88)，仅落后corgs(30.12) 0.24dB — 差距不大
+  - ADM超过fsgs(+0.28dB)和xgaussian(+0.39dB)，后者是更复杂的多视角方法
+  - **SSIM下降**(-0.0036)表明ADM在结构保真度上略有折衷
+  - 所有N=1方法(fsgs, xgaussian, dngaussian, r2gaussian)的PSNR集中在29.4-29.6范围，
+    ADM(29.88)明显高出这一簇，corgs(30.12)则是真正的领先者
+  - **结论更新**: ADM有效但仍逊于corgs的双高斯协同机制
+
+- **对之前结论的影响**:
+  - "ADM收益与数据难度正相关" 结论仍成立但幅度缩小
+  - foot_3v: ADM gain = +0.49dB (not +2.35dB)
+  - jaw_3v: ADM gain = ~+0.15dB (基于N=1 r2gaussian 25.42, 需核实)
+  - 需要检查其他3view数据集的r2gaussian是否也受到类似混淆
+
+- **状态**: ✅ keep (确认ADM有效但增益显著小于最初报告)
+- **commit**: 待提交
