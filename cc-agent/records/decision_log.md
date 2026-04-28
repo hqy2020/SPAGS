@@ -372,3 +372,33 @@ YYYY-MM-DD HH:MM | exp-<name> | PSNR=XX.XXXX/SSIM=XX.XXXX | 参数: ... | 状态
 
 - **状态**: ✅ keep (确认ADM有效但增益显著小于最初报告)
 - **commit**: 待提交
+
+### 2026-04-28 16:00 | head N=1公平对比 — head_baseline同样存在N=2混淆!
+
+- **背景**: 15:00的foot N=1实验发现旧基线(27.48)实际为N=2。下一个检查目标是head_50_3views (旧基线31.17可能也是N=2，因为FSGS/dngaussian/xgaussian均获得~33dB，但旧r2gaussian仅31.17)
+- **实验1: head_N1_r2gaussian** (--method r2gaussian, N=1)
+  - PSNR2D=**32.7320**, SSIM2D=0.9314
+  - **较旧N=2基线(31.17)提升+1.56dB** — 确认head_baseline=31.17也是N=2!
+- **实验2: head_N1_adm64** (--method spags, adm_feat_dim=64, r_max=1.0, N=1)
+  - PSNR2D=**32.7028**, SSIM2D=0.9330
+  - ADM gain over N=1 baseline: **-0.03dB** (等效于零，ADM不带来增益)
+- **修正后的head_50_3views方法排名**:
+  | 方法 | PSNR | SSIM | 排名 | 备注 |
+  |------|:----:|:----:|:----:|------|
+  | corgs | 33.13 | 0.9391 | 🥇 | N=2 + coreg + coprune |
+  | fsgs | 32.86 | 0.9376 | 🥈 | N=1 + pseudo views |
+  | xgaussian | 32.99 | 0.9372 | 🥉 | N=1 + cross-view |
+  | dngaussian | 33.08 | 0.9373 | 4 | N=1 + depth (CT无深度) |
+  | r2gaussian (N=1) | **32.73** | 0.9314 | 5 | ✅ 新N=1基线 |
+  | spags (ADM N=1) | **32.70** | 0.9330 | 6 | ADM无效 |
+
+- **关键分析**:
+  - head N=1 r2gaussian (32.73) 仅略低于其他N=1方法(32.86-33.08), 差距0.13-0.35dB — 说明头部CT重建相对容易
+  - ADM在head上无效(-0.03dB), 符合"baseline PSNR>30时ADM无收益"的规律
+  - 旧报告"ADM on head +0.14dB"是基于错误N=2对比, 修正后为零增益
+- **对之前结论的影响**:
+  - "ADM仅对3view困难数据有效" 结论仍然成立, 但有效门槛提高: 仅baseline PSNR<30
+  - foot_3v: ADM gain = +0.49dB (唯一显著正收益数据集)
+  - jaw_3v: ADM gain ≈ +0.15dB (基于N=1 r2gaussian 25.42)
+  - 其他所有3v+数据集 ADM 无增益或负收益
+- **下一步**: 全数据集N=1基线均已修正 (foot=29.39, head=32.73); 其他数据集(chest/jaw/pancreas)的r2gaussian是方法开关跑的, 已是N=1
