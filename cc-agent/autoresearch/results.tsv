@@ -12,3 +12,7 @@ bda2c43	adm_feat64_001	foot_50_3views	28.9034	0.8227	64	1.0	0.002	256	keep	ADM f
 a4aee8d	adm_feat256_001	foot_50_3views	29.0986	0.8178	256	1.0	0.002	256	keep	ADM feat_dim=256: PSNR=29.10(+1.62dB), 收益递减明显
 e515ac4	head_baseline	head_50_3views	31.1727	0.9177	-	-	-	-	keep	head baseline (no ADM) 3000it - head much easier than foot
 e515ac4	head_adm64_001	head_50_3views	31.3164	0.9164	64	1.0	0.002	256	keep	ADM on head: +0.14dB over baseline, less gain than foot (+1.42dB)
+4ebafa4	fsgs_prox_001	foot_50_3views	27.9834	0.8217	-	-	-	-	keep	FSGS Proximity standalone (th=6.0): +0.50dB over baseline, 阈值默认
+4ebafa4	fsgs_prox_th4	foot_50_3views	27.9608	0.8229	-	-	-	-	keep	FSGS Prox th=4: PSNR=27.96, SSIM=0.8229 (best SSIM)
+4ebafa4	fsgs_prox_th8	foot_50_3views	27.9573	0.8214	-	-	-	-	keep	FSGS Prox th=8: PSNR=27.96, SSIM=0.8214 (similar to th=6)
+4ebafa4	fsgs_prox_th10	foot_50_3views	27.9746	0.8225	-	-	-	-	keep	FSGS Prox th=10: PSNR=27.97, SSIM=0.8225 (similar to th=6)
