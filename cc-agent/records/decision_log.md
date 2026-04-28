@@ -167,5 +167,19 @@ YYYY-MM-DD HH:MM | exp-<name> | PSNR=XX.XXXX/SSIM=XX.XXXX | 参数: ... | 状态
   | dngaussian | 33.2847 | 🥉 |
   | r2gaussian | 33.2370 | 4 |
   | fsgs | 33.2028 | 5 |
-  | spags (ADM) | 33.1083 | 6 |
-- **SPAGS在6视角下排名最后** — ADM在充足视角下无优势
+|  | spags (ADM) | 33.1083 | 6 |
+|- **SPAGS在6视角下排名最后** — ADM在充足视角下无优势
+|
+### 2026-04-28 11:00 | 实验 #X: foot_50_9views_corgs — corgs在9视角foot数据集上最优
+|- **方法**: corgs (CoR-GS) on foot_50_9views
+|- **结果**: PSNR2D=35.5631, SSIM2D=0.9552, PSNR3D=27.2974, SSIM3D=0.8039
+|- **foot_50_9views方法排名**:
+|  | 方法 | PSNR | SSIM | 排名 |
+|  |-----|------|------|------|
+|  | corgs | 35.5631 | 0.9552 | 🥇 |
+|  | r2gaussian | 35.5573 | 0.9468 | 🥈 |
+|  | fsgs | 35.4357 | 0.9482 | 🥉 |
+|- **分析**: corgs在foot_50_9views上表现最佳，PSNR和SSIM均领先。corgs优势在更多视角下更明显。
+|- **状态**: ✅ keep
+|- **下一步**: foot_50_9views_spags (测试ADM在9视角foot上的表现)
+|

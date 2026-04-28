@@ -16,6 +16,10 @@
 
 ## ✅ 成功案例
 
+### ADM在双高斯场(N=2) vs 单场(N=1) — 2026-04-28  
+**发现**: ADM在N=1下 PSNR=29.83(+2.35dB) 显著优于 N=2+coreg+coprune 的 28.90(+1.42dB)。双场的coreg_loss约束干扰了ADM学习。  
+**方法开关Bug**: `--method spags` 强制覆盖gaussiansN=1，即使显式传参。已在10:00修复。
+
 ### 模板
 ```markdown
 ### [日期] 案例名称
