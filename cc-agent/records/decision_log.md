@@ -547,3 +547,36 @@ YYYY-MM-DD HH:MM | exp-<name> | PSNR=XX.XXXX/SSIM=XX.XXXX | 参数: ... | 状态
 
 | **状态**: ✅ keep (确认ADM+GAR不互补, GAR可放弃)
 
+### 2026-04-29 03:00 | Jaw N=1公平基线补全 — ADM增益修正为+0.23dB
+| **假设**: jaw_50_3views的r2gaussian基线(25.42)是否为N=2值？需要真正的N=1基线
+| **实验**: jaw_N1_r2gaussian (--method r2gaussian, N=1, foot→jaw, 3000it)
+| **结果轨迹**:
+|   - ITER 1000: PSNR2D=25.5282, SSIM2D=0.8457
+|   - ITER 2000: PSNR2D=25.6042, SSIM2D=0.8364
+|   - ITER 3000: PSNR2D=**25.6232**, SSIM2D=0.8294
+|
+| **对比分析**:
+|   - **旧jaw baseline (25.4160) 确认也是N=2值!** N=1真实值=25.62, 高出~0.21dB
+|   - vs jaw_N1_adm64_tv0.0 (25.8485): **ADM gain = +0.23dB PSNR** (非估算值+0.43dB)
+|   - ADM峰it2000=25.94 vs baseline it2000=25.60 → peak gain = +0.34dB, 3000it退化为+0.23dB
+|   - 符合"ADM过拟合于~1500it"的规律
+|
+| **修正后的jaw_50_3views方法排名 (PSNR2D)**:
+|   | 方法 | PSNR | SSIM | 排名 | 备注 |
+|   |------|:----:|:----:|:----:|------|
+|   | corgs | 25.81 | 0.8586 | 🥇 | N=2+coreg+coprune |
+|   | spags (ADM N=1) | **25.85** | 0.8335 | 🥈 | +0.23dB vs N=1 baseline |
+|   | r2gaussian (N=1) | **25.62** | 0.8294 | 🥉 | ✅ 新N=1基线 |
+|   | dngaussian | 25.51 | 0.8293 | 4 | N=1 (depth无效) |
+|   | fsgs | 25.43 | 0.8278 | 5 | N=1 |
+|   | xgaussian | 25.39 | 0.8307 | 6 | N=1 (cross-view占位符) |
+|
+| **核心结论更新**:
+|   - **所有5器官(15数据集)的N=1公平基线均已建立** ✅
+|   - ADM在jaw上实际增益+0.23dB (vs旧估算+0.43dB), 差异由旧N=2基线偏低导致
+|   - 最终ADM有效数据: foot(+0.66dB) > jaw(+0.23dB) > head(-0.03dB) ≈ chest(+0.03dB) ≈ pancreas(-0.25dB)
+|   - **ADM仅对foot 3view数据有显著增益(+0.66dB), 其他所有场景基本无效或负收益**
+|   - 所有实验完成, 进入综合总结和论文写作阶段
+| **状态**: ✅ keep
+| **下一步**: (1) 同步N=1基线数据到论文chapter4 (2) 实现SPS交叉注意力模块 (3) 更新skill
+

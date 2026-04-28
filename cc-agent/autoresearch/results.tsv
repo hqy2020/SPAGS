@@ -157,3 +157,7 @@ a314c05\tchest_N1_adm64_tv0.0\tchest_50_3views\t30.6102\t0.9084\t64\t1.0\t0.0\t2
 2026-04-28 23:07\tfoot_N1_adm64_tv0.0_5000it\t29.7207\t0.8826\t23.3798\t0.7155\tfoot_50_3views\tspags(adm_tv0_5000it)
 # 5000it trajectory: ITER1000=29.94, ITER2000=29.91, ITER3000=29.77, ITER4000=29.76, ITER5000=29.72
 # 关键发现: PSNR在ITER1000后单调递减(-0.22dB/4000it); 更长训练不帮助ADM; ADM过拟合于3000it内
+
+# === 2026-04-29 03:00 jaw N=1公平基线补全 ===
+new	none	jaw_N1_r2gaussian	jaw_50_3views	25.6232	0.8294	-	-	-	-	keep	True N=1 r2gaussian baseline for jaw (--method r2gaussian); ADM tv0.0 gain = +0.23dB
+2026-04-29 03:00	jaw_N1_r2gaussian	25.6232	0.8294	25.4421	0.5875	jaw_50_3views	r2gaussian(N=1)
