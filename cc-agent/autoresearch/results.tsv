@@ -145,8 +145,12 @@
 2026-04-28 18:00\tfoot_N1_adm64_tv0.0\t30.0514\t0.8912\t23.6062\t0.7152\tfoot_50_3views\tspags(adm_tv0)
 2026-04-28 18:00\tjaw_N1_adm64\t25.5894\t0.8292\t25.5192\t0.5925\tjaw_50_3views\tspags(adm_n1)
 
+# === 2026-04-28 19:00 ADM+GAR on N=1 ===
+new\tnone\tfoot_N1_adm64_tv0.0_gar6\tfoot_50_3views\t30.0208\t0.8848\t64\t1.0\t0.0\t256\tkeep\tADM+GAR on N=1: PSNR=30.02几乎等于ADM-only 30.05(-0.03dB); GAR与ADM不互补; 峰it2000=30.07
+
 # === 2026-04-28 18:30 TV=0.0泛化验证 === 
 a314c05\tjaw_N1_adm64_tv0.0\tjaw_50_3views\t25.8485\t0.8335\t64\t1.0\t0.0\t256\tkeep\tADM N=1 jaw tv=0.0: PSNR=25.85超越tv=0.002版25.59(+0.26dB)! 峰it2000=25.94; TV=0.0全身泛化有效
 a314c05\tchest_N1_adm64_tv0.0\tchest_50_3views\t30.6102\t0.9084\t64\t1.0\t0.0\t256\tkeep\tADM N=1 chest tv=0.0: PSNR=30.61几乎等于baseline(~30.58), 峰it1000=30.82(+0.24dB)但退化快; 确认easy data上ADM无效
 2026-04-28 18:30\tjaw_N1_adm64_tv0.0\t25.8485\t0.8335\t25.5192\t0.5925\tjaw_50_3views\tspags(adm_n1_tv0)
 2026-04-28 18:30\tchest_N1_adm64_tv0.0\t30.6102\t0.9084\t23.0895\t0.6255\tchest_50_3views\tspags(adm_n1_tv0)
+2026-04-28 19:00\tfoot_N1_adm64_tv0.0_gar6\t30.0208\t0.8848\t23.6060\t0.7147\tfoot_50_3views\tspags(adm+gar_n1)

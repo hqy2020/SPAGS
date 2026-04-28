@@ -492,7 +492,31 @@ YYYY-MM-DD HH:MM | exp-<name> | PSNR=XX.XXXX/SSIM=XX.XXXX | 参数: ... | 状态
 |   - chest baseline=30.58 > 30, ADM完全无效
 |   - 峰it1000=30.82但it3000退化到30.61, 过拟合严重
 |   - TV=0.0 vs TV=0.002(chest旧值30.62): 几乎一致
-|   - **最终确认**: ADM有效门槛: baseline PSNR < 30
+- **最终确认**: ADM有效门槛: baseline PSNR < 30
 
-| **状态**: ✅ keep (边界条件确认)
+- **状态**: ✅ keep (边界条件确认)
+
+### 2026-04-28 19:00 | foot_N1_adm64_tv0.0_gar6 — ADM+GAR在N=1上不互补
+
+| **假设**: GAR(FSGS Proximity)在N=1上与ADM互补提升性能
+
+| **参数**: feat_dim=64, r_max=1.0, tv_weight=0.0, proximity_threshold=6.0, N=1, foot_50_3views
+
+| **结果轨迹**:
+|   - ITER 1000: PSNR2D=30.07, SSIM2D=0.9011 (略高于ADM-only 30.00)
+|   - ITER 2000: PSNR2D=30.07, SSIM2D=0.8879 (低于ADM-only 30.16)
+|   - ITER 3000: PSNR2D=**30.02**, SSIM2D=0.8848
+
+| **对比分析**:
+|   - vs foot_N1_r2gaussian (29.39): **+0.63dB PSNR**
+|   - vs foot_N1_adm64_tv0.0 (30.05): **-0.03dB PSNR** (等效于零)
+|   - vs corgs (30.12): 差0.10dB
+|   - GAR未提供ADM之上的额外收益
+
+| **关键分析**:
+|   - ADM已通过三平面特征网络实现了密度调制, GAR的邻近密化不再提供额外信息
+|   - 训练速度: ~20 it/s (与ADM-only相当, GAR开销可忽略)
+|   - N=1单高斯场的参数空间简单, GAR的密化操作冗余
+
+| **状态**: ✅ keep (确认ADM+GAR不互补, GAR可放弃)
 
