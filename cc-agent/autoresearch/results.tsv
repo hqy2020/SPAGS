@@ -120,3 +120,10 @@
 2026-04-28 13:57	pancreas_50_9views_corgs	35.9698	0.9626	26.6491	0.7848	pancreas_50_9views	corgs
 2026-04-28 14:00	pancreas_50_9views_xgaussian	35.7708	0.9603	26.5059	0.7813	pancreas_50_9views	xgaussian
 2026-04-28 14:00	pancreas_50_9views_dngaussian	35.7072	0.9609	26.5057	0.7817	pancreas_50_9views	dngaussian
+2026-04-28 14:04	pancreas_50_6views_spags	33.8756	0.9499	25.5344	0.7598	pancreas_50_6views	spags
+2026-04-28 14:08	pancreas_50_9views_spags	35.5284	0.9582	26.4589	0.7794	pancreas_50_9views	spags
+2026-04-28 14:11	jaw_50_9views_spags	30.0970	0.9109	28.0481	0.6665	jaw_50_9views	spags
+2026-04-28 14:16	chest_50_9views_spags	34.9263	0.9502	25.1251	0.7120	chest_50_9views	spags
+2026-04-28 14:16	foot_50_6views_spags	32.5836	0.9274	25.0358	0.7759	foot_50_6views	spags
+2026-04-28 14:19	head_50_6views_spags	35.6073	0.9608	27.6498	0.8169	head_50_6views	spags
+2026-04-28 14:19	head_50_9views_spags	36.6068	0.9664	29.0305	0.8443	head_50_9views	spags

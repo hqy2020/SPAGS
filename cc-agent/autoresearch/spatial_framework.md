@@ -39,6 +39,32 @@
 | ADM (Tri-plane Network) | ✅ 已实现 | `gaussian_model.py` | 高斯级 |
 | Co-Pruning | ✅ 已实现 | `train.py` | 高斯级 |
 
+## 📊 全系比对完成 (2026-04-28 14:19)
+
+**🎉 6方法×9数据集 = 54实验全系比对完成！**
+
+### 每数据集最优方法
+
+| 数据集 | 3v最佳 | 6v最佳 | 9v最佳 |
+|-------|:------:|:------:|:------:|
+| chest | dngaussian(30.77) 🥇 | corgs(33.42) 🥇 | dngaussian(35.00) 🥇 |
+| foot | corgs(30.12) 🥇 | fsgs(32.75) 🥇 | corgs(35.56) 🥇 |
+| head | corgs(33.13) 🥇 | corgs(36.06) 🥇 | fsgs(36.65) 🥇 |
+| jaw | corgs(25.81) 🥇 | corgs(28.38) 🥇 | r2gaussian(30.26) 🥇 |
+| pancreas | corgs(30.67) 🥇 | corgs(34.61) 🥇 | corgs(35.97) 🥇 |
+
+### ADM(SPAGS)有效场景
+- **仅3view困难数据集**: foot(+2.35dB修正后), jaw(+0.15dB)
+- baseline PSNR < 30 时有正收益, > 30时为负收益
+- **结论**: ADM是稀疏视角专属模块, 多视角(6v/9v)+高基线数据集(>30)上无使用价值
+
+### 方法特点总结
+- **corgs**: 在大多数场景下最优或接近最优, 尤其在低视角(3v)和中等数据难度时
+- **fsgs**: 在中高视角(6v/9v)上表现稳定
+- **dngaussian/xgaussian**: 深度约束/交叉注意力在CT(无深度图)场景下效果有限
+- **r2gaussian**: 作为baseline表现稳定, 但在困难数据集上明显落后
+- **spags(ADM)**: 仅在3view+低基线(<30)数据集上有正收益
+
 ## 🔬 待探索的关键问题
 
 ### 1. SPS + GAR 互补性

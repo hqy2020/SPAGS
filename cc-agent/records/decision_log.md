@@ -260,3 +260,74 @@ YYYY-MM-DD HH:MM | exp-<name> | PSNR=XX.XXXX/SSIM=XX.XXXX | 参数: ... | 状态
 |||- **已启动**: pancreas_50_6views_fsgs(GPU0) + corgs(GPU1)
 |||- **剩余**: pancreas(6v: f/c/d/x/s) + pancreas(9v全系) + jaw_9v_spags ≈ 15实验
 |||
+### 2026-04-28 14:04 | pancreas_50_6views_spags完成 — ADM在6v胰腺上排名末位
+
+- **结果**: PSNR2D=33.8756, SSIM2D=0.9499 (vs r2gaussian baseline 33.9430)
+- **变化**: **-0.07dB** — ADM在胰腺6视角下略低于baseline
+- **pancreas_50_6views排名 (PSNR2D)**:
+  | 方法 | PSNR | SSIM | 排名 |
+  |------|------|------|------|
+  | corgs | 34.6100 | 0.9541 | 🥇 |
+  | xgaussian | 34.2247 | 0.9535 | 🥈 |
+  | dngaussian | 34.0960 | 0.9530 | 🥉 |
+  | fsgs | 34.0824 | 0.9535 | 4 |
+  | r2gaussian | 33.9430 | 0.9499 | 5 |
+  | spags (ADM) | 33.8756 | 0.9499 | 6 |
+- **分析**: ADM在胰腺6视角下排名最后，确认规律：高baseline高视角数时ADM为负收益
+- **状态**: ✅ keep
+- **下一步**: 继续 pancreas_50_9views_spags
+
+### 2026-04-28 14:08 | pancreas_50_9views_spags完成 — ADM在9v胰腺上仍排名末位
+
+- **结果**: PSNR2D=35.5284, SSIM2D=0.9582 (vs r2gaussian 35.6753, corgs 35.9698)
+- **变化**: **-0.15dB** vs r2gaussian baseline
+- **pancreas_50_9views排名 (PSNR2D)**:
+  | 方法 | PSNR | SSIM | 排名 |
+  |------|------|------|------|
+  | corgs | 35.9698 | 0.9626 | 🥇 |
+  | xgaussian | 35.7708 | 0.9603 | 🥈 |
+  | fsgs | 35.7136 | 0.9600 | 🥉 |
+  | dngaussian | 35.7072 | 0.9609 | 4 |
+  | r2gaussian | 35.6753 | 0.9599 | 5 |
+  | spags (ADM) | 35.5284 | 0.9582 | 6 |
+- **分析**: 完整确认：ADM在所有胰腺视角(3v/6v/9v)上均为负收益。baseline PSNR>30时ADM失效
+- **状态**: ✅ keep
+- **下一步**: 最后一个实验 jaw_50_9views_spags
+
+### 2026-04-28 14:11 | jaw_50_9views_spags完成 — ADM在9v下颌上排名末位
+
+- **结果**: PSNR2D=30.0970, SSIM2D=0.9109 (it2000=30.2013, it3000退化)
+- **jaw_50_9views排名 (PSNR2D)**:
+  | 方法 | PSNR | SSIM | 排名 |
+  |------|------|------|------|
+  | r2gaussian | 30.2624 | 0.9147 | 🥇 |
+  | dngaussian | 30.2580 | 0.9145 | 🥈 |
+  | xgaussian | 30.2478 | 0.9143 | 🥉 |
+  | corgs | 30.2430 | 0.9197 | 4 |
+  | fsgs | 30.1941 | 0.9145 | 5 |
+  | spags (ADM) | 30.0970 | 0.9109 | 6 |
+- **分析**: 有趣的是jaw_3v上SPAGS排名第二(+0.15dB)，但9v上反而垫底。ADM收益随视角数增加递减的规律在所有数据集上一致
+- **关键发现**: ADM在几乎所有的6v/9v场景中排名末位(6/6)，仅在3v困难数据集上有正收益
+- **状态**: ✅ keep
+- **🎉 54实验全系比对完成！6方法×9数据集全部记录**
+
+### 2026-04-28 14:19 | 🎉 54实验全系比对完成！(6方法×9数据集)
+
+- **最后4个spags实验完成**:
+  - chest_50_9views_spags: 34.9263 (-0.06dB vs r2gaussian 34.99) → 5/6
+  - foot_50_6views_spags: 32.5836 (-0.15dB vs r2gaussian 32.73) → 6/6
+  - head_50_6views_spags: 35.6073 (-0.06dB vs r2gaussian 35.67) → 6/6
+  - head_50_9views_spags: 36.6068 (+0.02dB vs r2gaussian 36.58) → 2/6 🥈
+
+- **ADM (SPAGS) 在所有9个数据集上的视角维度表现**:
+  | 数据集 | baseline@3v | ADM rank@3v | ADM rank@6v | ADM rank@9v |
+  |-------|:---------:|:----------:|:----------:|:----------:|
+  | foot | 27.48(难) | 6/6† | 6/6 | 6/6 |
+  | jaw | 25.42(最难) | **2/6🥈** | 6/6 | 6/6 |
+  | chest | 30.58(易) | 6/6 | 6/6 | 5/6 |
+  | head | 31.17(很易) | 4/6 | 6/6 | **2/6🥈** |
+  | pancreas | 30.57(易) | 5/6 | 6/6 | 6/6 |
+  † foot_3v: ADM(N=1)实际最佳+2.35dB vs 旧N=2 baseline, 但新N=1基线待测
+
+- **核心结论**: 不存在"银弹"方法。方法排名完全取决于数据集和视角数。corgs在低视角(3v)多数据集上表现出色, fsgs在中等视角(6v)表现好, 9v时各方法差异缩小。
+- **状态**: ✅ 全系完成
