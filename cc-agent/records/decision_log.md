@@ -243,5 +243,20 @@ YYYY-MM-DD HH:MM | exp-<name> | PSNR=XX.XXXX/SSIM=XX.XXXX | 参数: ... | 状态
 |||  - 深度约束(dngaussian)在pancreas上无效（0.000000), 与CT无深度图一致
 |||  - 排名与jaw_3v相似: corgs稳居第一, r2gaussian/fsgs紧追
 |||- **状态**: ✅ 3/6实验完成 (corgs/dngaussian/xgaussian已记录), spags正在跑
-|||- **下一步**: 完成pancreas_50_3views_spags后, 转向pancreas_50_6views全系
+|- **下一步**: 完成pancreas_50_3views_spags后, 转向pancreas_50_6views全系
+|||
+|||### 2026-04-28 13:13 | pancreas_50_3views全系完成 + 6v baseline完成
+|||- **pancreas_50_3views排名 (PSNR2D)**: 
+|||  | 方法 | PSNR2D | SSIM2D | 排名 |
+|||  |------|--------|--------|------|
+|||  | corgs | 30.6705 | 0.9203 | 🥇 |
+|||  | fsgs | 30.5869 | 0.9216 | 🥈 |
+|||  | r2gaussian | 30.5702 | 0.9222 | 🥉 |
+|||  | xgaussian | 30.3552 | 0.9157 | 4 |
+|||  | spags (ADM) | 30.3181 | 0.9164 | 5 |
+|||  | dngaussian | 30.2906 | 0.9160 | 6 |
+|||- **关键发现**: SPAGS(ADM)在pancreas上**低于baseline**(-0.25dB), 确认ADM收益与数据难度正相关
+|||- **pancreas_50_6views_r2gaussian**: PSNR2D=33.9430 (6v baseline)
+|||- **已启动**: pancreas_50_6views_fsgs(GPU0) + corgs(GPU1)
+|||- **剩余**: pancreas(6v: f/c/d/x/s) + pancreas(9v全系) + jaw_9v_spags ≈ 15实验
 |||

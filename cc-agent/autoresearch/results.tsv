@@ -107,3 +107,7 @@
 2026-04-28 13:04	pancreas_50_3views_dngaussian	30.2906	0.9160	24.2328	0.6762	pancreas_50_3views	dngaussian
 2026-04-28 13:09	pancreas_50_3views_xgaussian	30.5382	0.9209	24.3906	0.6821	pancreas_50_3views	xgaussian
 2026-04-28 13:09	pancreas_50_3views_xgaussian	30.3552	0.9157	24.2414	0.6779	pancreas_50_3views	xgaussian
+2026-04-28 13:10	pancreas_50_3views_dngaussian	30.7117	0.9209	24.3871	0.6824	pancreas_50_3views	dngaussian
+2026-04-28 13:13	pancreas_50_6views_r2gaussian	34.1420	0.9534	25.6300	0.7613	pancreas_50_6views	r2gaussian
+2026-04-28 13:13	pancreas_50_3views_spags	30.3181	0.9164	24.2875	0.6788	pancreas_50_3views	spags
+2026-04-28 13:12	pancreas_50_6views_r2gaussian	33.9430	0.9499	25.4897	0.7561	pancreas_50_6views	r2gaussian
