@@ -91,8 +91,8 @@ class ModelParams(ParamGroup):
         self.adm_r_max = 0.5  # 最大调制范围（论文推荐0.5）
         self.adm_tv_weight = 0.002  # TV正则化权重（消融实验最优值）
 
-        # 🔄 对比方法选择: r2gaussian / corgs / fsgs / dngaussian / xgaussian
-        self.method = "spags"  # baseline选择参数
+        # 🔄 对比方法选择: r2gaussian / corgs / fsgs / dngaussian / xgaussian / spags
+        self.method = "spags"  # 默认SPAGS（本文方法）
 
         super().__init__(parser, "Loading Parameters", sentinel)
 

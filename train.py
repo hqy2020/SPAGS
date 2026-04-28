@@ -1367,11 +1367,7 @@ if __name__ == "__main__":
     parser.add_argument("--opacity_lr_init", type=float, default=0.01)  # opacity参数初始学习率
     
     # FSGS Proximity-Guided Densification 参数在arguments/__init__.py中已定义
-    
-    # 🔄 对比方法选择
-    parser.add_argument("--method", type=str, default="spags", 
-                        choices=["r2gaussian", "corgs", "fsgs", "dngaussian", "xgaussian", "spags"],
-                        help="选择运行的方法: r2gaussian / corgs / fsgs / dngaussian / xgaussian / spags")
+    # --method 已在 ModelParams 中通过 self.method 定义
     
     # 旧版本 Proximity-Guided Densification 参数 (兼容性保留)
     parser.add_argument("--enable_proximity_guided", action="store_true", default=False)  # 是否启用旧版proximity-guided密化
