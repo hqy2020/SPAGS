@@ -115,3 +115,57 @@ YYYY-MM-DD HH:MM | exp-<name> | PSNR=XX.XXXX/SSIM=XX.XXXX | 参数: ... | 状态
   - 每次只跑一个实验，自动记录、commit、push
   - 9个实验队列：单模块验证 → 两两组合 → 三合一 → 跨数据集
 - **GitHub**: 已推送至 `autoresearch/adm-gradfix` 分支
+
+### 2026-04-28 10:00 | ⚠️ 关键发现: 方法开关覆盖显式参数 — 所有实验结果需重新审视
+
+- **背景**: Co-pruning阈值扫描(coprune_th3, coprune_th7)结果异常：PSNR=29.83/29.88 vs 预期23-24。调查发现方法开关(commit 343397c)将SPAGS模式强制设为`gaussiansN=1, coreg=False, coprune=False`
+- **影响**: 即使命令显式传`--gaussiansN 2 --coprune`，`--method spags`也会覆盖为`N=1, coprune=False`。所有coprune_th3/th7实验实际上是纯ADM运行。
+- **修正后的真实性能**:
+  | 配置 | gaussiansN | PSNR | 提升 |
+  |------|-----------|------|------|
+  | 旧baseline | 2 | 27.48 | - |
+  | 旧ADM feat64 | 2 | 28.90 | +1.42dB |
+  | ADM-only(修正后) | **1** | **29.83** | **+2.35dB** |
+- **分析**: 
+  - ADM在单一高斯场(N=1)下效果更好(+2.35dB) vs 双场(N=2)的+1.42dB
+  - 原因: 双高斯场的coreg_loss约束+co-pruning剪枝干扰了ADM学习
+  - SPAGS方法(修正后)的admv1实际是ADM+gaussiansN=2+coreg+coprune — 完全对不齐
+- **状态**: ⚠️ 需重新设计实验: (1) 公平N=1 baseline (2) 修复方法开关不覆盖显式参数 (3) 重新测试ADM+GAR+Co-pruning组合
+- **决策**: 修复方法开关bug，然后跑真正干净的消融实验
+
+### 2026-04-28 10:00 | 🔧 方法开关Bug已修复 + chest_50_3views_spags实验完成
+
+- **Bug修复**: 移除SPAGS模式下对gaussiansN/coreg/coprune的强制覆盖。现在显式传参不再被方法开关覆盖。
+- **chest_50_3views_spags结果**: PSNR=30.6222, SSIM=0.9126
+  - vs chest baseline (r2gaussian, N=2): PSNR=30.5821, SSIM=0.9117
+  - **提升**: +0.04dB — 几乎无改善，类似head数据集的规律
+- **跨数据集ADM增益总结** (N=1 ADM vs 旧N=2 baseline):
+
+  | 数据集 | baseline PSNR | SPAGS PSNR | 增益 | 难度 |
+  |-------|--------------|-----------|------|----|
+  | foot (3views) | 27.48 | 29.83 | **+2.35dB** 🔥 | 难 |
+  | head (3views) | 31.17 | 31.32 | +0.14dB | 中 |
+  | chest (3views) | 30.58 | 30.62 | +0.04dB | 易 |
+
+- **分析**: ADM增益与数据集难度正相关。foot的投影角度覆盖最差→ADM空间调制效果显著；chest结构对称规则→ADM收益微乎其微
+- **注意**: 以上baseline使用gaussiansN=2+coreg+coprune，不是公平的N=1对比
+- **下一实验**: chest_50_6views_spags（6视角验证ADM在更多视角下的表现）
+
+### 2026-04-28 10:14 | chest_50_6views_spags完成 — ADM在多视角下无增益
+
+- **结果**: PSNR=33.1083, SSIM=0.9410 vs baseline (r2gaussian) PSNR=33.2370, SSIM=0.9440
+- **变化**: **-0.13dB** — 6视角下ADM反而略低于baseline
+- **分析**: 
+  - 6视角提供足够几何约束，ADM空间调制的边际价值降至零甚至负值
+  - 3视角时ADM对foot有+2.35dB增益，对chest仅+0.04dB；6视角时ADM对chest为-0.13dB
+  - **核心发现**: ADM收益随视角数增加而递减，随数据难度增加而递增
+- **方法对比** (chest_50_6views, PSNR2D):
+  | 方法 | PSNR | 排名 |
+  |-----|------|------|
+  | corgs | 33.4160 | 🥇 |
+  | xgaussian | 33.2663 | 🥈 |
+  | dngaussian | 33.2847 | 🥉 |
+  | r2gaussian | 33.2370 | 4 |
+  | fsgs | 33.2028 | 5 |
+  | spags (ADM) | 33.1083 | 6 |
+- **SPAGS在6视角下排名最后** — ADM在充足视角下无优势

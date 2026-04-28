@@ -165,14 +165,15 @@ def training(
         print("🔬 Method: X-Gaussian (ECCV'24) — Cross-view Gaussian")
         print("="*60)
     else:  # spags (default)
-        gaussiansN = 1
-        coreg = False
-        coprune = False
+        # SPAGS: don't override explicit gaussiansN/coreg/coprune params
+        # These are controlled by explicit command-line args for ablation
         dataset.multi_gaussian = False
         dataset.pseudo_labels = False
         dataset.enable_adm = True
         print("="*60)
         print("🔬 Method: SPAGS (本文) — Spatial-aware Progressive Adaptive GS")
+        if gaussiansN != 1 or coreg or coprune:
+            print(f"  Note: explicit override — gaussiansN={gaussiansN}, coreg={coreg}, coprune={coprune}")
         print("="*60)
 
     # 初始化数据集场景
